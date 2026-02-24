@@ -1,26 +1,666 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>黑暗真相</title>
-  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
-  <meta name="description" content="Description">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
-  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星空分类 · 静读银河</title>
+    <!-- marked 解析 Markdown (轻量) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Avenir', 'Helvetica', sans-serif;
+        }
+
+        /* 星空背景 —— 深邃流动感 */
+        body {
+            min-height: 100vh;
+            background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
+            position: relative;
+            color: #f0f0f0;
+            overflow-x: hidden;
+        }
+
+        /* 星星生成 (纯CSS) */
+        body::before, body::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        body::before {
+            background: transparent;
+            box-shadow: 1px 1px 2px rgba(255,255,255,0.8), 
+                        2px 2px 4px rgba(255,255,255,0.3),
+                        3px 3px 6px rgba(255,255,240,0.2);
+            animation: starPulse 4s infinite alternate;
+        }
+
+        /* 随机星星 via 多重渐变 (模拟繁星) */
+        body {
+            background-image: 
+                radial-gradient(2px 2px at 10px 20px, #fff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 90px 140px, #fffa, rgba(0,0,0,0)),
+                radial-gradient(3px 3px at 160px 80px, #fcf9f0, rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 300px 400px, #fff, rgba(0,0,0,0)),
+                radial-gradient(4px 4px at 500px 200px, #ffecaa, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 700px 550px, #d4f1ff, rgba(0,0,0,0)),
+                radial-gradient(3px 3px at 850px 720px, #b0e0ff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 200px 800px, #fff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 1100px 300px, #ffddbb, rgba(0,0,0,0)),
+                radial-gradient(3px 3px at 1250px 900px, #fff0d0, rgba(0,0,0,0));
+            background-repeat: repeat;
+            background-size: 200px 200px; /* 控制星星密度 */
+            animation: twinkling 3s infinite alternate;
+        }
+
+        @keyframes twinkling {
+            0% { opacity: 0.8; }
+            100% { opacity: 1; }
+        }
+
+        /* 主容器，置于星空之上 */
+        .app {
+            position: relative;
+            z-index: 10;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(1px);
+        }
+
+        /* 视图切换 */
+        .view {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1.5rem;
+            transition: opacity 0.3s ease;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* ----- 主页样式 ----- */
+        .home-view {
+            text-align: center;
+        }
+
+        .brand {
+            font-size: 3.2rem;
+            font-weight: 300;
+            letter-spacing: 8px;
+            text-shadow: 0 0 20px #7ec8ff, 0 0 40px #4a6fa5;
+            margin-bottom: 2rem;
+            color: #f3f9ff;
+        }
+
+        .search-box {
+            width: min(600px, 90%);
+            margin: 1.5rem auto 3rem;
+            display: flex;
+            background: rgba(10, 20, 40, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 60px;
+            padding: 0.3rem 0.3rem 0.3rem 2rem;
+            box-shadow: 0 8px 32px rgba(0, 10, 30, 0.8);
+        }
+
+        .search-box input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 1rem 0.5rem;
+            font-size: 1.2rem;
+            color: #fff;
+            outline: none;
+        }
+
+        .search-box input::placeholder {
+            color: rgba(220, 235, 255, 0.6);
+            font-style: italic;
+        }
+
+        .search-box button {
+            background: rgba(50, 100, 180, 0.8);
+            border: none;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 500;
+            padding: 0.8rem 2.2rem;
+            border-radius: 60px;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+            transition: 0.2s;
+            border: 1px solid rgba(255,255,255,0.3);
+            letter-spacing: 1px;
+        }
+
+        .search-box button:hover {
+            background: #3f7bc0;
+            box-shadow: 0 0 20px #5f9eff;
+        }
+
+        /* 九宫格分类 */
+        .category-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(100px, 180px));
+            gap: 1.5rem;
+            justify-content: center;
+            margin-top: 1rem;
+            max-width: 800px;
+        }
+
+        .cat-card {
+            background: rgba(18, 28, 46, 0.7);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(120, 180, 255, 0.3);
+            border-radius: 32px;
+            padding: 1.2rem 0.8rem;
+            font-size: 1.4rem;
+            font-weight: 400;
+            color: #d7e8ff;
+            text-align: center;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+            transition: 0.2s;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px #3b8cff;
+        }
+
+        .cat-card:hover {
+            background: #1f3b5c;
+            border-color: #8cbaff;
+            transform: scale(1.05);
+            box-shadow: 0 0 30px #3f7bc0;
+        }
+
+        /* ----- 二级列表视图 ----- */
+        .list-view {
+            width: 100%;
+            max-width: 1100px;
+            margin: 0 auto;
+            align-items: flex-start;
+            justify-content: flex-start;
+        }
+
+        .list-header {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            margin-bottom: 2rem;
+            width: 100%;
+            flex-wrap: wrap;
+        }
+
+        .back-home {
+            background: rgba(20, 30, 50, 0.7);
+            backdrop-filter: blur(5px);
+            border: 1px solid #7788aa;
+            color: #ccdeff;
+            padding: 0.6rem 1.6rem;
+            border-radius: 40px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 0 15px #1a2f4e;
+        }
+
+        .back-home:hover {
+            background: #2c405e;
+            border-color: #b0d0ff;
+        }
+
+        .list-title {
+            font-size: 2.5rem;
+            font-weight: 300;
+            background: linear-gradient(145deg, #d8ecff, #aaccff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px #2660a9;
+        }
+
+        .list-search-box {
+            margin-left: auto;
+            display: flex;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid #33475f;
+            border-radius: 40px;
+            padding: 0.2rem 0.2rem 0.2rem 1.5rem;
+            min-width: 250px;
+        }
+
+        .list-search-box input {
+            background: transparent;
+            border: none;
+            color: white;
+            padding: 0.5rem 0;
+            flex: 1;
+            outline: none;
+        }
+
+        .list-search-box button {
+            background: #2a4c77;
+            border: none;
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 40px;
+            cursor: pointer;
+        }
+
+        /* 文章列表区域 (按首字母分组) */
+        .articles-container {
+            background: rgba(8, 18, 30, 0.6);
+            backdrop-filter: blur(16px);
+            border-radius: 48px;
+            border: 1px solid #2a3f5f;
+            padding: 2rem 2rem 2rem 2.5rem;
+            width: 100%;
+            margin-top: 1.5rem;
+            box-shadow: 0 30px 50px rgba(0,0,0,0.7);
+        }
+
+        .letter-group {
+            margin-bottom: 2rem;
+        }
+
+        .letter-header {
+            font-size: 2.2rem;
+            font-weight: 400;
+            color: #b8d6ff;
+            border-bottom: 2px solid #4272a4;
+            padding-bottom: 0.2rem;
+            margin-bottom: 1rem;
+            text-shadow: 0 0 12px #3a82d0;
+            letter-spacing: 3px;
+        }
+
+        .article-item {
+            display: inline-block;  /* 让item可以排列 */
+            margin: 0.5rem 1.2rem 0.5rem 0;
+            background: rgba(70, 120, 200, 0.2);
+            border: 1px solid #36648b;
+            border-radius: 40px;
+            padding: 0.5rem 1.8rem;
+            font-size: 1.2rem;
+            color: #e0f0ff;
+            cursor: pointer;
+            transition: 0.15s;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 2px 10px #0a1c30;
+        }
+
+        .article-item:hover {
+            background: #2b5580;
+            border-color: #8fcbff;
+            transform: translateY(-3px);
+            box-shadow: 0 12px 20px #001c33;
+        }
+
+        /* 文章阅读区域 (MD渲染) */
+        .reader-panel {
+            margin-top: 2.5rem;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(20px);
+            border-radius: 48px;
+            padding: 2rem 2.5rem;
+            border: 1px solid #5e7ba0;
+            color: #eef6ff;
+            font-size: 1.1rem;
+            line-height: 1.7;
+            word-wrap: break-word;
+            box-shadow: 0 0 60px #0e2a47;
+        }
+
+        .reader-panel h1, .reader-panel h2 {
+            color: #c4e0ff;
+            border-bottom: 1px dashed #4b6e8e;
+        }
+
+        .reader-panel a {
+            color: #9bc9ff;
+        }
+
+        .reader-panel code {
+            background: #1e2e3f;
+            padding: 0.2rem 0.4rem;
+            border-radius: 8px;
+        }
+
+        .reader-panel pre {
+            background: #111e2c;
+            padding: 1rem;
+            border-radius: 24px;
+            overflow-x: auto;
+        }
+
+        .close-reader {
+            float: right;
+            background: none;
+            border: 1px solid #778fbb;
+            color: #b6d0f0;
+            font-size: 1.2rem;
+            padding: 0.2rem 1rem;
+            border-radius: 30px;
+            cursor: pointer;
+        }
+
+        .loading {
+            color: #b0d0ff;
+            padding: 2rem;
+            font-size: 1.4rem;
+        }
+    </style>
 </head>
 <body>
-  <div id="app">加载中...</div>
-  <script>
-    window.$docsify = {
-      name: '黑暗真相',
-      repo: 'https://moohydra.github.io', // 替换为你的 GitHub 地址
-      loadSidebar: true, // 开启侧边栏
-      subMaxLevel: 2,    // 侧边栏显示目录的层级
-      auto2top: true,    // 切换页面后自动跳转到顶部
-    }
-  </script>
-  <script src="//cdn.jsdelivr.net/npm/docsify@4"></script>
-  <script src="//cdn.jsdelivr.net/npm/docsify/lib/plugins/search.min.js"></script>
-  <script src="//cdn.jsdelivr.net/npm/docsify/lib/plugins/zoom-image.min.js"></script>
+<div class="app" id="app">
+    <!-- 主页视图 -->
+    <div id="homeView" class="view home-view">
+        <div class="brand">✧ 星辰文廊 ✧</div>
+        <div class="search-box">
+            <input type="text" id="globalSearchInput" placeholder="搜索所有文章...">
+            <button id="globalSearchBtn"> 搜索 </button>
+        </div>
+        <div class="category-grid" id="categoryGrid"></div>
+    </div>
+
+    <!-- 二级列表视图 (隐藏) -->
+    <div id="listView" class="view list-view hidden">
+        <div class="list-header">
+            <button class="back-home" id="backHomeBtn">‹ 主页</button>
+            <span class="list-title" id="listViewTitle">分类 · 技术</span>
+            <div class="list-search-box">
+                <input type="text" id="listSearchInput" placeholder="过滤当前列表...">
+                <button id="listSearchBtn">过滤</button>
+            </div>
+        </div>
+        <!-- 文章列表区域(分组) -->
+        <div class="articles-container" id="articlesList"></div>
+        <!-- 阅读器 (初始隐藏) -->
+        <div id="readerPanel" class="reader-panel hidden">
+            <button class="close-reader" id="closeReaderBtn">✕ 关闭</button>
+            <div id="articleContent">加载中...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        // ---------- 用户配置 ----------
+        const CONFIG = {
+            OWNER: 'moohydra',      // <-- 替换为你的 GitHub 用户名
+            REPO: 'moohydra.github.io',             // <-- 替换为仓库名 (如果是 username.github.io 则填 username.github.io)
+            POSTS_PATH: 'posts',                 // 存放文章的文件夹，里面按分类建子文件夹
+            CATEGORIES: ['世设', '规则', '角色', '小说', '杂谈', '占位符1', '占位符2', '占位符3', '占位符4'] // 9个分类，必须和子文件夹名一致
+        };
+
+        // ---------- 全局状态 ----------
+        let allArticles = [];                // 所有文章 { title, category, download_url, fullName }
+        let currentListContext = null;       // { type: 'category', value: '技术' } 或 { type: 'search', keyword }
+        let filteredArticles = [];            // 当前列表视图展示的文章（过滤后）
+        let currentCategory = null;           // 当前分类名
+
+        // DOM 元素
+        const homeView = document.getElementById('homeView');
+        const listView = document.getElementById('listView');
+        const categoryGrid = document.getElementById('categoryGrid');
+        const backHomeBtn = document.getElementById('backHomeBtn');
+        const listViewTitle = document.getElementById('listViewTitle');
+        const articlesListDiv = document.getElementById('articlesList');
+        const readerPanel = document.getElementById('readerPanel');
+        const articleContentDiv = document.getElementById('articleContent');
+        const closeReaderBtn = document.getElementById('closeReaderBtn');
+        const globalSearchInput = document.getElementById('globalSearchInput');
+        const globalSearchBtn = document.getElementById('globalSearchBtn');
+        const listSearchInput = document.getElementById('listSearchInput');
+        const listSearchBtn = document.getElementById('listSearchBtn');
+
+        // ---------- 辅助函数 ----------
+        function showHome() {
+            homeView.classList.remove('hidden');
+            listView.classList.add('hidden');
+            readerPanel.classList.add('hidden');
+        }
+
+        function showList() {
+            homeView.classList.add('hidden');
+            listView.classList.remove('hidden');
+        }
+
+        // 获取分类文件夹下所有 .md 文件 (通过 GitHub API)
+        async function fetchArticlesByCategory(category) {
+            const url = `https://api.github.com/repos/${CONFIG.OWNER}/${CONFIG.REPO}/contents/${CONFIG.POSTS_PATH}/${encodeURIComponent(category)}`;
+            try {
+                const resp = await fetch(url);
+                if (!resp.ok) return [];
+                const data = await resp.json();
+                if (!Array.isArray(data)) return [];
+                // 只取 .md 文件
+                return data
+                    .filter(item => item.name.endsWith('.md') && item.type === 'file')
+                    .map(item => ({
+                        title: item.name.replace(/\.md$/i, ''),
+                        category: category,
+                        download_url: item.download_url,
+                        fullName: item.name,
+                        path: item.path
+                    }));
+            } catch (e) {
+                console.warn(`获取分类[${category}]失败`, e);
+                return [];
+            }
+        }
+
+        // 加载所有分类文章 (并发)
+        async function loadAllArticles() {
+            const promises = CONFIG.CATEGORIES.map(cat => fetchArticlesByCategory(cat));
+            const results = await Promise.allSettled(promises);
+            let articles = [];
+            results.forEach((res, idx) => {
+                if (res.status === 'fulfilled') {
+                    articles = articles.concat(res.value);
+                } else {
+                    console.warn(`分类${CONFIG.CATEGORIES[idx]}加载失败`);
+                }
+            });
+            // 按标题排序 (简单按拼音/unicode)
+            articles.sort((a, b) => a.title.localeCompare(b.title, 'zh-CN'));
+            return articles;
+        }
+
+        // 获取文章的首字母分组 (英文大写字母 / 非英语归为 '#')
+        function getFirstLetterGroup(title) {
+            if (!title || title.length === 0) return '#';
+            const firstChar = title.charAt(0);
+            // 判断是否英文字母
+            if (/[a-zA-Z]/.test(firstChar)) {
+                return firstChar.toUpperCase();
+            } else {
+                // 数字、中文等其他字符统一放在 '☆' 组 (也可以用#，更好看)
+                return '☆';
+            }
+        }
+
+        // 将文章列表按首字母分组 (返回 Map 分组)
+        function groupByFirstLetter(articles) {
+            const groups = new Map();
+            articles.forEach(article => {
+                const letter = getFirstLetterGroup(article.title);
+                if (!groups.has(letter)) groups.set(letter, []);
+                groups.get(letter).push(article);
+            });
+            // 对每个组内再按标题排序
+            for (let [_, list] of groups.entries()) {
+                list.sort((a, b) => a.title.localeCompare(b.title, 'zh-CN'));
+            }
+            // 返回排序后的字母数组 (字母顺序 + '☆' 放最后)
+            const letters = Array.from(groups.keys()).sort((a, b) => {
+                if (a === '☆') return 1;
+                if (b === '☆') return -1;
+                return a.localeCompare(b);
+            });
+            return { groups, letters };
+        }
+
+        // 渲染文章列表到 articlesListDiv (根据filteredArticles)
+        function renderArticleList() {
+            const { groups, letters } = groupByFirstLetter(filteredArticles);
+            let html = '';
+            for (let letter of letters) {
+                const articleGroup = groups.get(letter) || [];
+                html += `<div class="letter-group"><div class="letter-header">${letter}</div>`;
+                articleGroup.forEach(art => {
+                    html += `<span class="article-item" data-url="${art.download_url}" data-title="${art.title}" data-category="${art.category}">${art.title}</span>`;
+                });
+                html += `</div>`;
+            }
+            if (filteredArticles.length === 0) {
+                html = '<div style="padding: 2rem; text-align: center; color: #9bb8dd;">🌌 此处暂无文章</div>';
+            }
+            articlesListDiv.innerHTML = html;
+
+            // 为所有 .article-item 绑定点击阅读事件
+            document.querySelectorAll('.article-item').forEach(el => {
+                el.addEventListener('click', (e) => {
+                    const url = el.dataset.url;
+                    const title = el.dataset.title;
+                    if (url) {
+                        loadAndShowArticle(url, title);
+                    }
+                });
+            });
+        }
+
+        // 加载并显示文章内容
+        async function loadAndShowArticle(downloadUrl, title) {
+            readerPanel.classList.remove('hidden');
+            articleContentDiv.innerHTML = '加载星光中的文字...';
+            try {
+                const resp = await fetch(downloadUrl);
+                const md = await resp.text();
+                // 使用 marked 渲染
+                const htmlContent = marked.parse(md);
+                articleContentDiv.innerHTML = `<h2>✨ ${title}</h2>` + htmlContent;
+            } catch (e) {
+                articleContentDiv.innerHTML = '<p style="color:#ffa07a;">读取失败，星尘干扰了信号。</p>';
+            }
+        }
+
+        // 设置列表视图标题并刷新列表
+        function setListContext(type, value) {
+            if (type === 'category') {
+                currentCategory = value;
+                listViewTitle.innerText = `分类 · ${value}`;
+                // 从 allArticles 筛选分类
+                filteredArticles = allArticles.filter(a => a.category === value);
+            } else if (type === 'search') {
+                currentCategory = null;
+                listViewTitle.innerText = `搜索 · ${value}`;
+                const kw = value.toLowerCase();
+                filteredArticles = allArticles.filter(a => a.title.toLowerCase().includes(kw));
+            }
+            renderArticleList();
+        }
+
+        // 监听分类点击
+        function initCategoryButtons() {
+            CONFIG.CATEGORIES.forEach(cat => {
+                const btn = document.createElement('div');
+                btn.className = 'cat-card';
+                btn.innerText = cat;
+                btn.addEventListener('click', async () => {
+                    // 如果还没加载全量文章，先加载（但一般已经在初始化时加载）
+                    if (allArticles.length === 0) {
+                        articlesListDiv.innerHTML = '<div class="loading">🌟 召唤星辰文章...</div>';
+                        showList();
+                        allArticles = await loadAllArticles();
+                    }
+                    setListContext('category', cat);
+                    showList();
+                });
+                categoryGrid.appendChild(btn);
+            });
+        }
+
+        // 初始化加载所有文章 (预加载)
+        async function initializeArticles() {
+            try {
+                allArticles = await loadAllArticles();
+            } catch (e) {
+                console.warn('预加载失败，可按分类单独加载');
+            }
+        }
+
+        // ---------- 事件绑定 ----------
+        backHomeBtn.addEventListener('click', () => {
+            showHome();
+        });
+
+        closeReaderBtn.addEventListener('click', () => {
+            readerPanel.classList.add('hidden');
+        });
+
+        // 主页全局搜索
+        globalSearchBtn.addEventListener('click', async () => {
+            const kw = globalSearchInput.value.trim();
+            if (kw === '') return;
+            if (allArticles.length === 0) {
+                articlesListDiv.innerHTML = '<div class="loading">🔭 搜索星海，请稍候...</div>';
+                showList();
+                allArticles = await loadAllArticles();
+            }
+            setListContext('search', kw);
+            showList();
+        });
+
+        globalSearchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') globalSearchBtn.click();
+        });
+
+        // 列表视图内过滤
+        listSearchBtn.addEventListener('click', () => {
+            const kw = listSearchInput.value.trim().toLowerCase();
+            if (!currentListContext) return;
+            if (currentCategory) {
+                // 基于当前分类过滤
+                filteredArticles = allArticles.filter(a => a.category === currentCategory && a.title.toLowerCase().includes(kw));
+            } else {
+                // 当前是搜索结果，从原搜索结果再过滤？可以用之前保存的context
+                // 简化：从allArticles过滤关键字
+                filteredArticles = allArticles.filter(a => a.title.toLowerCase().includes(kw));
+            }
+            renderArticleList();
+        });
+
+        listSearchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') listSearchBtn.click();
+        });
+
+        // 启动
+        (async function init() {
+            initCategoryButtons();
+            await initializeArticles();  // 静默预加载
+        })();
+
+        // 为方便调试，将配置提醒显示在控制台
+        console.log('星空分类板 已加载，请修改CONFIG中的OWNER/REPO为你自己的GitHub', CONFIG);
+        // 若未修改，显示友好提示
+        if (CONFIG.OWNER === 'your-github-username') {
+            alert('提示：请将代码开头的 CONFIG.OWNER 和 CONFIG.REPO 改为你的 GitHub 仓库信息，并把 .md 文章放在 posts/分类/ 下。\n\n目前使用演示数据 (空的)');
+        }
+    })();
+</script>
+<!-- 注：如需展示效果，可以放几个示例文章，但由用户自行在仓库创建 -->
 </body>
 </html>
