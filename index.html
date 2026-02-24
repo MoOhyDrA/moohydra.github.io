@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>黑暗秘史</title>
-    <!-- marked 解析 Markdown -->
+    <title>黑暗真相</title>
+    <!-- marked 解析 Markdown (保留用于三级阅读) -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         * {
@@ -49,7 +49,7 @@
                 radial-gradient(3px 3px at 200px 950px, #c7e0ff, rgba(0,0,0,0)),
                 radial-gradient(2px 2px at 1550px 300px, #fff0d0, rgba(0,0,0,0));
             background-repeat: repeat;
-            background-size: 350px 350px; /* 控制密度 */
+            background-size: 350px 350px;
             pointer-events: none;
             z-index: 0;
             animation: twinkling 4s infinite alternate;
@@ -60,7 +60,7 @@
             100% { opacity: 1; }
         }
 
-        /* 偶尔的流星效果 (装饰) */
+        /* 流星效果 */
         body::after {
             content: "";
             position: absolute;
@@ -82,29 +82,36 @@
             100% { transform: translate(-5%, -5%); opacity: 0.6; }
         }
 
-        /* 主应用层，半透明磨砂，让背景透出来 */
+        /* 主应用层，绝对定位容器用于动画过渡 */
         .app {
             position: relative;
-            z-index: 10;
             min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            backdrop-filter: blur(2px); /* 轻微模糊增加星空感 */
+            z-index: 10;
+            backdrop-filter: blur(2px);
         }
 
-        /* 通用视图切换 */
+        /* 所有视图绝对定位，通过opacity/visibility过渡 */
         .view {
-            flex: 1;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             padding: 2rem 1.5rem;
-            transition: opacity 0.3s ease;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+            opacity: 1;
+            visibility: visible;
+            background: transparent; /* 背景由body提供 */
         }
 
-        .hidden {
-            display: none !important;
+        .view.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
         }
 
         /* ----- 主页视图 ----- */
@@ -204,11 +211,7 @@
 
         /* ----- 二级列表视图 (分类/搜索结果) ----- */
         .list-view {
-            width: 100%;
-            max-width: 1100px;
-            margin: 0 auto;
-            align-items: flex-start;
-            justify-content: flex-start;
+            justify-content: flex-start;  /* 内容从顶部开始 */
         }
 
         .list-header {
@@ -217,6 +220,7 @@
             gap: 1.5rem;
             margin-bottom: 2rem;
             width: 100%;
+            max-width: 1100px;
             flex-wrap: wrap;
         }
 
@@ -284,6 +288,7 @@
             border: 1px solid #2a3f5f;
             padding: 2rem 2rem 2rem 2.5rem;
             width: 100%;
+            max-width: 1100px;
             margin-top: 1.5rem;
             box-shadow: 0 30px 50px rgba(0,0,0,0.8);
         }
@@ -304,7 +309,8 @@
         }
 
         .article-item {
-            display: inline-block;
+            display: inline-flex;
+            align-items: baseline;
             margin: 0.5rem 1.2rem 0.5rem 0;
             background: rgba(70, 120, 200, 0.2);
             border: 1px solid #36648b;
@@ -316,6 +322,8 @@
             transition: 0.15s;
             backdrop-filter: blur(4px);
             box-shadow: 0 2px 10px #0a1c30;
+            gap: 0.6rem;
+            flex-wrap: wrap;
         }
 
         .article-item:hover {
@@ -325,12 +333,18 @@
             box-shadow: 0 12px 20px #001c33;
         }
 
+        .article-date {
+            font-size: 0.85rem;
+            color: #a0bbdd;
+            background: rgba(0,0,0,0.3);
+            padding: 0.2rem 0.8rem;
+            border-radius: 30px;
+            border: 1px solid #4a6f95;
+            white-space: nowrap;
+        }
+
         /* ----- 三级沉浸阅读视图 ----- */
         .reader-view {
-            width: 100%;
-            max-width: 900px;
-            margin: 0 auto;
-            align-items: flex-start;
             justify-content: flex-start;
         }
 
@@ -340,6 +354,7 @@
             gap: 2rem;
             margin-bottom: 2rem;
             width: 100%;
+            max-width: 900px;
         }
 
         .back-to-list {
@@ -377,6 +392,7 @@
             font-size: 1.1rem;
             line-height: 1.7;
             width: 100%;
+            max-width: 900px;
             box-shadow: 0 30px 70px #0a1b30;
         }
 
@@ -423,7 +439,7 @@
 <div class="app" id="app">
     <!-- 主页视图 -->
     <div id="homeView" class="view home-view">
-        <div class="brand">✧ 黑暗真相 ✧</div>
+        <div class="brand">✧黑暗文库✧</div>
         <div class="search-box">
             <input type="text" id="globalSearchInput" placeholder="搜索所有文章...">
             <button id="globalSearchBtn">搜索</button>
@@ -461,13 +477,12 @@
         // ---------- 用户配置 ----------
         const CONFIG = {
             OWNER: 'moohydra',      // <-- 替换为你的 GitHub 用户名
-            REPO: 'moohydra.github.io',             // <-- 替换为仓库名 (如果是 username.github.io 则填 username.github.io)
-            POSTS_PATH: 'posts',                 // 存放文章的文件夹，里面按分类建子文件夹
-            // 九个分类 —— 已按要求修改
+            REPO: 'moohydra.github.io',             // <-- 替换为仓库名
+            POSTS_PATH: 'posts',                 // 存放文章的文件夹
             CATEGORIES: ['世设', '规则', '角色', '战报', '地图', '杂谈', '小说', '占位符1', '占位符2']
         };
 
-        // 模拟数据（用于演示或当GitHub获取失败时），分类已匹配新分类
+        // 模拟数据（用于演示或GitHub获取失败时）
         const MOCK_ARTICLES = [
             { title: '世界构建基础', category: '世设', download_url: '#', fullName: 'world_building.md' },
             { title: '神系设定', category: '世设', download_url: '#', fullName: 'pantheon.md' },
@@ -488,10 +503,12 @@
         ];
 
         // ---------- 全局状态 ----------
-        let allArticles = [];                // 所有文章 { title, category, download_url, fullName }
-        let currentListContext = null;        // { type: 'category', value: '技术' } 或 { type: 'search', keyword }
-        let filteredArticles = [];            // 当前列表视图展示的文章（过滤后）
+        let allArticles = [];                // 所有文章 { title, category, download_url, fullName, path }
+        let filteredArticles = [];            // 当前列表视图展示的文章（可能带时间戳）
         let currentCategory = null;           // 当前分类名
+
+        // 缓存文章frontmatter (key: download_url)
+        const frontmatterCache = new Map();
 
         // DOM 元素
         const homeView = document.getElementById('homeView');
@@ -528,6 +545,71 @@
             readerView.classList.remove('hidden');
         }
 
+        // 解析frontmatter，提取created和modified字段
+        function extractFrontmatter(mdContent) {
+            const frontmatterRegex = /^---\s*\n([\s\S]+?)\n---\s*\n/;
+            const match = mdContent.match(frontmatterRegex);
+            if (!match) return null;
+
+            const yaml = match[1];
+            const createdMatch = yaml.match(/created:\s*(.+)/);
+            const modifiedMatch = yaml.match(/modified:\s*(.+)/);
+            return {
+                created: createdMatch ? createdMatch[1].trim() : null,
+                modified: modifiedMatch ? modifiedMatch[1].trim() : null,
+            };
+        }
+
+        // 格式化ISO时间为 YYYY-MM-DD
+        function formatDate(isoString) {
+            if (!isoString) return '';
+            try {
+                const d = new Date(isoString);
+                if (isNaN(d.getTime())) return '';
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            } catch {
+                return '';
+            }
+        }
+
+        // 获取单篇文章的frontmatter (使用缓存)
+        async function fetchFrontmatterForArticle(article) {
+            if (article.download_url === '#') return null; // 模拟数据跳过
+            if (frontmatterCache.has(article.download_url)) {
+                return frontmatterCache.get(article.download_url);
+            }
+            try {
+                const resp = await fetch(article.download_url);
+                if (!resp.ok) throw new Error('fetch failed');
+                const md = await resp.text();
+                const fm = extractFrontmatter(md);
+                frontmatterCache.set(article.download_url, fm);
+                return fm;
+            } catch (e) {
+                console.warn(`获取frontmatter失败: ${article.title}`, e);
+                frontmatterCache.set(article.download_url, null);
+                return null;
+            }
+        }
+
+        // 为一批文章补充时间戳 (修改原对象)
+        async function enrichArticlesWithFrontmatter(articles) {
+            const promises = articles.map(async (article) => {
+                if (article.created) return; // 已经有过
+                const fm = await fetchFrontmatterForArticle(article);
+                if (fm && fm.created) {
+                    article.created = fm.created;
+                    article.modified = fm.modified;
+                } else {
+                    article.created = null;
+                }
+            });
+            await Promise.allSettled(promises);
+        }
+
         // 获取分类文件夹下所有 .md 文件 (通过 GitHub API)
         async function fetchArticlesByCategory(category) {
             const url = `https://api.github.com/repos/${CONFIG.OWNER}/${CONFIG.REPO}/contents/${CONFIG.POSTS_PATH}/${encodeURIComponent(category)}`;
@@ -536,7 +618,6 @@
                 if (!resp.ok) return [];
                 const data = await resp.json();
                 if (!Array.isArray(data)) return [];
-                // 只取 .md 文件
                 return data
                     .filter(item => item.name.endsWith('.md') && item.type === 'file')
                     .map(item => ({
@@ -544,12 +625,12 @@
                         category: category,
                         download_url: item.download_url,
                         fullName: item.name,
-                        path: item.path
+                        path: item.path,
+                        created: null,  // 待填充
                     }));
             } catch (e) {
                 console.warn(`获取分类[${category}]失败，使用模拟数据`, e);
-                // 返回对应分类的模拟数据（如果有）
-                return MOCK_ARTICLES.filter(a => a.category === category).map(a => ({ ...a, download_url: '#' }));
+                return MOCK_ARTICLES.filter(a => a.category === category).map(a => ({ ...a, created: null }));
             }
         }
 
@@ -565,11 +646,9 @@
                     console.warn(`分类${CONFIG.CATEGORIES[idx]}加载失败`);
                 }
             });
-            // 如果articles为空，使用所有模拟数据
             if (articles.length === 0) {
-                articles = MOCK_ARTICLES;
+                articles = MOCK_ARTICLES.map(a => ({ ...a, created: null }));
             }
-            // 按标题排序
             articles.sort((a, b) => a.title.localeCompare(b.title, 'zh-CN'));
             return articles;
         }
@@ -581,7 +660,7 @@
             if (/[a-zA-Z]/.test(firstChar)) {
                 return firstChar.toUpperCase();
             } else {
-                return '☆'; // 非字母统一归为☆
+                return '☆';
             }
         }
 
@@ -604,7 +683,7 @@
             return { groups, letters };
         }
 
-        // 渲染文章列表到 articlesListDiv
+        // 渲染文章列表到 articlesListDiv (根据filteredArticles)
         function renderArticleList() {
             const { groups, letters } = groupByFirstLetter(filteredArticles);
             let html = '';
@@ -612,7 +691,12 @@
                 const articleGroup = groups.get(letter) || [];
                 html += `<div class="letter-group"><div class="letter-header">${letter}</div>`;
                 articleGroup.forEach(art => {
-                    html += `<span class="article-item" data-url="${art.download_url}" data-title="${art.title}" data-category="${art.category}">${art.title}</span>`;
+                    const dateStr = art.created ? formatDate(art.created) : '';
+                    html += `<span class="article-item" data-url="${art.download_url}" data-title="${art.title}" data-category="${art.category}">${art.title}`;
+                    if (dateStr) {
+                        html += `<span class="article-date">${dateStr}</span>`;
+                    }
+                    html += `</span>`;
                 });
                 html += `</div>`;
             }
@@ -629,7 +713,6 @@
                     if (url) {
                         loadAndShowArticle(url, title);
                     } else {
-                        // 模拟数据无真实url，直接显示模拟内容
                         articleContentDiv.innerHTML = `<h2>✨ ${title}</h2><p>这是一篇示例文章。请配置正确的 GitHub 仓库以加载真实内容。</p>`;
                         readerTitle.innerText = title;
                         showReader();
@@ -656,18 +739,26 @@
         }
 
         // 设置列表视图上下文并刷新
-        function setListContext(type, value) {
+        async function setListContext(type, value) {
             if (type === 'category') {
                 currentCategory = value;
                 listViewTitle.innerText = `分类 · ${value}`;
                 filteredArticles = allArticles.filter(a => a.category === value);
+                // 先渲染无时间版本
+                renderArticleList();
+                // 异步补充时间戳
+                await enrichArticlesWithFrontmatter(filteredArticles);
+                renderArticleList(); // 重新渲染显示时间
             } else if (type === 'search') {
                 currentCategory = null;
                 listViewTitle.innerText = `搜索 · ${value}`;
                 const kw = value.toLowerCase();
                 filteredArticles = allArticles.filter(a => a.title.toLowerCase().includes(kw));
+                renderArticleList();
+                // 搜索一般不显示时间，为了性能可以跳过，但也可以尝试补充
+                await enrichArticlesWithFrontmatter(filteredArticles);
+                renderArticleList();
             }
-            renderArticleList();
         }
 
         // 初始化分类按钮
@@ -682,7 +773,7 @@
                         showList();
                         allArticles = await loadAllArticles();
                     }
-                    setListContext('category', cat);
+                    await setListContext('category', cat);
                     showList();
                 });
                 categoryGrid.appendChild(btn);
@@ -695,7 +786,7 @@
                 allArticles = await loadAllArticles();
             } catch (e) {
                 console.warn('预加载失败，使用模拟数据');
-                allArticles = MOCK_ARTICLES;
+                allArticles = MOCK_ARTICLES.map(a => ({ ...a, created: null }));
             }
         }
 
@@ -717,7 +808,7 @@
                 showList();
                 allArticles = await loadAllArticles();
             }
-            setListContext('search', kw);
+            await setListContext('search', kw);
             showList();
         });
 
@@ -728,16 +819,15 @@
         // 列表视图内过滤
         listSearchBtn.addEventListener('click', () => {
             const kw = listSearchInput.value.trim().toLowerCase();
-            if (!currentListContext && !currentCategory) {
-                // 如果没有上下文，则基于当前 filteredArticles 再过滤（或者直接过滤所有）
+            if (!currentCategory) {
+                // 处于搜索状态或全列表
                 filteredArticles = allArticles.filter(a => a.title.toLowerCase().includes(kw));
-            } else if (currentCategory) {
-                filteredArticles = allArticles.filter(a => a.category === currentCategory && a.title.toLowerCase().includes(kw));
             } else {
-                // 处于搜索状态
-                filteredArticles = allArticles.filter(a => a.title.toLowerCase().includes(kw));
+                filteredArticles = allArticles.filter(a => a.category === currentCategory && a.title.toLowerCase().includes(kw));
             }
             renderArticleList();
+            // 可异步补充时间戳
+            enrichArticlesWithFrontmatter(filteredArticles).then(() => renderArticleList());
         });
 
         listSearchInput.addEventListener('keypress', (e) => {
@@ -749,7 +839,6 @@
             initCategoryButtons();
             await initializeArticles();
 
-            // 若未修改配置，友好提示
             if (CONFIG.OWNER === 'your-github-username') {
                 console.log('提示：请修改CONFIG中的OWNER和REPO为你自己的GitHub信息。当前使用模拟数据展示。');
             }
