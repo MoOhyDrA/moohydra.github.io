@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>黑暗真相</title>
+    <title>你不知道的黑暗事实</title>
     <!-- marked 解析 Markdown (保留用于三级阅读) -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
@@ -14,23 +14,29 @@
             font-family: 'Segoe UI', 'Avenir', 'Helvetica', sans-serif;
         }
 
-        /* 深邃星空背景 —— 增强繁星效果 */
+        /* 深邃星空背景 —— 增强繁星效果，并确保铺满整个视口 */
+        html, body {
+            height: 100%;              /* 保证body至少占满视口高度，内容溢出时自动扩展 */
+            margin: 0;
+            padding: 0;
+        }
+
         body {
-            min-height: 100vh;
+            min-height: 100vh;          /* 确保背景至少充满视口 */
             background: radial-gradient(ellipse at bottom, #1b2735 0%, #0a0e17 100%);
-            position: relative;
+            position: relative;          /* 让伪元素相对于body定位，高度可随内容扩展 */
             color: #f0f0f0;
             overflow-x: hidden;
         }
 
-        /* 星星层：大量随机亮点 */
+        /* 星星层：大量随机亮点，绝对定位相对于body，高度100%跟随body内容 */
         body::before {
             content: "";
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
-            height: 100%;
+            height: 100%;                /* 相对于body，覆盖全部内容区域 */
             background-image: 
                 radial-gradient(2px 2px at 10px 20px, #fff, rgba(0,0,0,0)),
                 radial-gradient(2px 2px at 90px 140px, #fffa, rgba(0,0,0,0)),
@@ -82,7 +88,7 @@
             100% { transform: translate(-5%, -5%); opacity: 0.6; }
         }
 
-        /* 主应用层，绝对定位容器用于动画过渡 */
+        /* 主应用层，相对定位，确保内容在背景之上 */
         .app {
             position: relative;
             min-height: 100vh;
@@ -90,7 +96,7 @@
             backdrop-filter: blur(2px);
         }
 
-        /* 所有视图绝对定位，通过opacity/visibility过渡 */
+        /* 所有视图绝对定位，通过opacity/visibility/transform过渡 —— 平滑切换效果 */
         .view {
             position: absolute;
             top: 0;
@@ -102,16 +108,17 @@
             align-items: center;
             justify-content: center;
             padding: 2rem 1.5rem;
-            transition: opacity 0.4s ease, visibility 0.4s ease;
+            transition: opacity 0.5s ease, transform 0.5s ease, visibility 0.5s ease;
             opacity: 1;
             visibility: visible;
-            background: transparent; /* 背景由body提供 */
+            transform: translateY(0) scale(1);
+            background: transparent;
         }
 
         .view.hidden {
             opacity: 0;
             visibility: hidden;
-            pointer-events: none;
+            transform: translateY(10px) scale(0.95);
         }
 
         /* ----- 主页视图 ----- */
@@ -211,7 +218,7 @@
 
         /* ----- 二级列表视图 (分类/搜索结果) ----- */
         .list-view {
-            justify-content: flex-start;  /* 内容从顶部开始 */
+            justify-content: flex-start;
         }
 
         .list-header {
@@ -352,9 +359,10 @@
             display: flex;
             align-items: center;
             gap: 2rem;
-            margin-bottom: 2rem;
+            margin-bottom: 1rem;
             width: 100%;
             max-width: 900px;
+            flex-wrap: wrap;
         }
 
         .back-to-list {
@@ -380,6 +388,38 @@
             text-shadow: 0 0 20px #6080c0;
             flex: 1;
             word-break: break-word;
+        }
+
+        /* 独立的时间戳小框 */
+        .reader-meta {
+            width: 100%;
+            max-width: 900px;
+            margin-bottom: 1.5rem;
+            display: flex;
+            gap: 2rem;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(5px);
+            border: 1px solid #3a5f7a;
+            border-radius: 40px;
+            padding: 0.6rem 2rem;
+            font-size: 0.95rem;
+            color: #c0d6f0;
+            flex-wrap: wrap;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .meta-item span:first-child {
+            color: #9ab8e0;
+        }
+
+        .meta-item span:last-child {
+            color: #e0f0ff;
+            font-weight: 400;
         }
 
         .reader-content {
@@ -460,11 +500,16 @@
         <div class="articles-container" id="articlesList"></div>
     </div>
 
-    <!-- 三级沉浸阅读视图 -->
+    <!-- 三级沉浸阅读视图 (增加时间戳小框) -->
     <div id="readerView" class="view reader-view hidden">
         <div class="reader-header">
             <button class="back-to-list" id="backToListBtn">‹ 返回列表</button>
             <span class="reader-title" id="readerTitle">文章标题</span>
+        </div>
+        <!-- 独立时间戳框 -->
+        <div class="reader-meta" id="readerMeta">
+            <div class="meta-item"><span>创建:</span> <span id="readerCreated">--</span></div>
+            <div class="meta-item"><span>修改:</span> <span id="readerModified">--</span></div>
         </div>
         <div class="reader-content" id="articleContent">
             加载中...
@@ -520,6 +565,8 @@
         const listViewTitle = document.getElementById('listViewTitle');
         const articlesListDiv = document.getElementById('articlesList');
         const readerTitle = document.getElementById('readerTitle');
+        const readerCreated = document.getElementById('readerCreated');
+        const readerModified = document.getElementById('readerModified');
         const articleContentDiv = document.getElementById('articleContent');
         const globalSearchInput = document.getElementById('globalSearchInput');
         const globalSearchBtn = document.getElementById('globalSearchBtn');
@@ -560,8 +607,8 @@
             };
         }
 
-        // 格式化ISO时间为 YYYY-MM-DD
-        function formatDate(isoString) {
+        // 格式化ISO时间为 YYYY-MM-DD HH:MM (简洁)
+        function formatDateTime(isoString) {
             if (!isoString) return '';
             try {
                 const d = new Date(isoString);
@@ -569,7 +616,9 @@
                 const year = d.getFullYear();
                 const month = String(d.getMonth() + 1).padStart(2, '0');
                 const day = String(d.getDate()).padStart(2, '0');
-                return `${year}-${month}-${day}`;
+                const hour = String(d.getHours()).padStart(2, '0');
+                const minute = String(d.getMinutes()).padStart(2, '0');
+                return `${year}-${month}-${day} ${hour}:${minute}`;
             } catch {
                 return '';
             }
@@ -691,7 +740,7 @@
                 const articleGroup = groups.get(letter) || [];
                 html += `<div class="letter-group"><div class="letter-header">${letter}</div>`;
                 articleGroup.forEach(art => {
-                    const dateStr = art.created ? formatDate(art.created) : '';
+                    const dateStr = art.created ? formatDateTime(art.created).split(' ')[0] : ''; // 只显示日期
                     html += `<span class="article-item" data-url="${art.download_url}" data-title="${art.title}" data-category="${art.category}">${art.title}`;
                     if (dateStr) {
                         html += `<span class="article-date">${dateStr}</span>`;
@@ -715,15 +764,19 @@
                     } else {
                         articleContentDiv.innerHTML = `<h2>✨ ${title}</h2><p>这是一篇示例文章。请配置正确的 GitHub 仓库以加载真实内容。</p>`;
                         readerTitle.innerText = title;
+                        readerCreated.innerText = '--';
+                        readerModified.innerText = '--';
                         showReader();
                     }
                 });
             });
         }
 
-        // 加载并显示文章内容（三级视图）
+        // 加载并显示文章内容（三级视图），同时提取frontmatter显示时间戳
         async function loadAndShowArticle(downloadUrl, title) {
             readerTitle.innerText = title;
+            readerCreated.innerText = '--';
+            readerModified.innerText = '--';
             articleContentDiv.innerHTML = '<div class="loading">🌠 正在从星海提取文字...</div>';
             showReader();
 
@@ -731,7 +784,17 @@
                 const resp = await fetch(downloadUrl);
                 if (!resp.ok) throw new Error('网络错误');
                 const md = await resp.text();
-                const htmlContent = marked.parse(md);
+
+                // 提取 frontmatter
+                const fm = extractFrontmatter(md);
+                if (fm) {
+                    if (fm.created) readerCreated.innerText = formatDateTime(fm.created);
+                    if (fm.modified) readerModified.innerText = formatDateTime(fm.modified);
+                }
+
+                // 移除 frontmatter 部分，只将正文传给 marked
+                const contentWithoutFrontmatter = md.replace(/^---\s*\n[\s\S]*?\n---\s*\n/, '');
+                const htmlContent = marked.parse(contentWithoutFrontmatter);
                 articleContentDiv.innerHTML = htmlContent;
             } catch (e) {
                 articleContentDiv.innerHTML = `<h2>✨ ${title}</h2><p style="color:#ffa07a;">读取失败，星尘干扰了信号。请确认仓库中存在该文件。</p>`;
@@ -769,7 +832,7 @@
                 btn.innerText = cat;
                 btn.addEventListener('click', async () => {
                     if (allArticles.length === 0) {
-                        articlesListDiv.innerHTML = '<div class="loading">🌟 召唤星辰文章...</div>';
+                        articlesListDiv.innerHTML = '<div class="loading">🌟 召唤黑暗真相...</div>';
                         showList();
                         allArticles = await loadAllArticles();
                     }
@@ -820,13 +883,11 @@
         listSearchBtn.addEventListener('click', () => {
             const kw = listSearchInput.value.trim().toLowerCase();
             if (!currentCategory) {
-                // 处于搜索状态或全列表
                 filteredArticles = allArticles.filter(a => a.title.toLowerCase().includes(kw));
             } else {
                 filteredArticles = allArticles.filter(a => a.category === currentCategory && a.title.toLowerCase().includes(kw));
             }
             renderArticleList();
-            // 可异步补充时间戳
             enrichArticlesWithFrontmatter(filteredArticles).then(() => renderArticleList());
         });
 
