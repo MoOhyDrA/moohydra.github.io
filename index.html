@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>你不知道的黑暗事实</title>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500&family=Ma+Shan+Zheng&family=Raleway:wght@200;300;400&display=swap" rel="stylesheet">
     <style>
@@ -443,109 +442,63 @@
             color: #ff8070;
         }
 
-        /* ----- PDF 阅读器 (pdf.js canvas 渲染) ----- */
+        /* ----- PDF 阅读器 ----- */
         .pdf-viewer-wrap {
             display: flex;
             flex-direction: column;
             width: 100%;
+            height: calc(100vh - 280px);
+            min-height: 500px;
         }
         .pdf-toolbar {
             display: flex;
             align-items: center;
             justify-content: space-between;
             padding: 0.7rem 1.2rem;
-            background: rgba(0,0,0,0.25);
+            background: rgba(0,0,0,0.2);
             border-radius: var(--radius-md) var(--radius-md) 0 0;
             border: 1px solid var(--glass-border);
             border-bottom: none;
             flex-shrink: 0;
-            flex-wrap: wrap;
-            gap: 0.5rem;
         }
         .pdf-title-label {
             font-size: 0.95rem;
             color: var(--text-muted);
             letter-spacing: 1px;
         }
-        .pdf-controls {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-        }
-        .pdf-btn {
+        .pdf-download-btn {
             font-family: 'Raleway', sans-serif;
             font-size: 0.8rem;
             letter-spacing: 1px;
             color: var(--link-color);
-            background: transparent;
             text-decoration: none;
-            padding: 0.4rem 0.9rem;
+            padding: 0.4rem 1rem;
             border: 1px solid var(--glass-border);
             border-radius: var(--radius-pill);
-            cursor: pointer;
             transition: background 0.2s, border-color 0.2s;
         }
-        .pdf-btn:hover:not(:disabled) {
+        .pdf-download-btn:hover {
             background: var(--item-hover);
             border-color: var(--link-color);
         }
-        .pdf-btn:disabled {
-            opacity: 0.35;
-            cursor: not-allowed;
+        .pdf-iframe {
+            flex: 1;
+            width: 100%;
+            border: 1px solid var(--glass-border);
+            border-top: none;
+            border-radius: 0 0 var(--radius-md) var(--radius-md);
+            background: #fff;
         }
-        .pdf-page-info {
-            font-family: 'Raleway', sans-serif;
+        .pdf-fallback {
+            text-align: center;
+            padding: 0.6rem;
             font-size: 0.82rem;
             color: var(--text-muted);
-            min-width: 80px;
-            text-align: center;
+            flex-shrink: 0;
         }
-        .pdf-zoom-label {
-            font-family: 'Raleway', sans-serif;
-            font-size: 0.78rem;
-            color: var(--text-muted);
-            min-width: 44px;
-            text-align: center;
-        }
-        .pdf-canvas-area {
-            width: 100%;
-            overflow-y: auto;
-            overflow-x: auto;
-            background: rgba(0,0,0,0.3);
-            border: 1px solid var(--glass-border);
-            border-radius: 0 0 var(--radius-md) var(--radius-md);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 1.5rem 1rem;
-            gap: 1.2rem;
-            max-height: calc(100vh - 260px);
-            min-height: 480px;
-        }
-        .pdf-canvas-area canvas {
-            display: block;
-            max-width: 100%;
-            box-shadow: 0 4px 24px rgba(0,0,0,0.5);
-            border-radius: 4px;
-        }
-        .pdf-loading {
-            color: var(--text-muted);
-            font-family: 'Raleway', sans-serif;
-            font-size: 0.9rem;
-            letter-spacing: 2px;
-            padding: 4rem;
-            text-align: center;
-        }
-        .pdf-error {
-            color: #e88;
-            font-size: 0.9rem;
-            padding: 3rem;
-            text-align: center;
-        }
-        .pdf-error a { color: var(--link-color); }
+        .pdf-fallback a { color: var(--link-color); }
 
-        /* 让阅读器在 PDF 模式下去掉内边距 */
+        /* 让阅读器在 PDF 模式下撑满 */
         .reader-content:has(.pdf-viewer-wrap) {
             padding: 0;
             background: transparent;
@@ -1116,111 +1069,28 @@
 
             if (fileType === 'pdf') {
                 readerMeta.style.display = 'none';
-                const rawUrl = downloadUrl && downloadUrl !== '#' ? downloadUrl : htmlUrl;
+                // 优先用 download_url 直接嵌入，GitHub raw 文件支持跨域
+                const embedUrl = downloadUrl && downloadUrl !== '#' ? downloadUrl : htmlUrl;
                 const openUrl = htmlUrl && htmlUrl !== '#' ? htmlUrl : downloadUrl;
-
                 articleContentDiv.innerHTML = `
-                    <div class="pdf-viewer-wrap" id="pdfViewerWrap">
+                    <div class="pdf-viewer-wrap">
                         <div class="pdf-toolbar">
                             <span class="pdf-title-label">📕 ${title}</span>
-                            <div class="pdf-controls">
-                                <button class="pdf-btn" id="pdfPrev" disabled>‹ 上页</button>
-                                <span class="pdf-page-info" id="pdfPageInfo">— / —</span>
-                                <button class="pdf-btn" id="pdfNext" disabled>下页 ›</button>
-                                <span style="width:1px;height:1.2em;background:var(--glass-border);display:inline-block;margin:0 0.2rem;"></span>
-                                <button class="pdf-btn" id="pdfZoomOut">－</button>
-                                <span class="pdf-zoom-label" id="pdfZoomLabel">100%</span>
-                                <button class="pdf-btn" id="pdfZoomIn">＋</button>
-                                <span style="width:1px;height:1.2em;background:var(--glass-border);display:inline-block;margin:0 0.2rem;"></span>
-                                <a class="pdf-btn" href="${rawUrl}" target="_blank" download>⬇ 下载</a>
-                                <a class="pdf-btn" href="${openUrl}" target="_blank">↗ GitHub</a>
+                            <div style="display:flex;gap:0.8rem;align-items:center">
+                                <a class="pdf-download-btn" href="${embedUrl}" target="_blank" download>⬇ 下载</a>
+                                <a class="pdf-download-btn" href="${openUrl}" target="_blank">↗ 在 GitHub 查看</a>
                             </div>
                         </div>
-                        <div class="pdf-canvas-area" id="pdfCanvasArea">
-                            <div class="pdf-loading" id="pdfLoading">🌠 正在渲染 PDF...</div>
+                        <iframe
+                            class="pdf-iframe"
+                            src="${embedUrl}"
+                            allowfullscreen
+                            id="pdfFrame"
+                        ></iframe>
+                        <div class="pdf-fallback">
+                            若 PDF 无法内嵌显示，请点击上方"下载"或"在 GitHub 查看"按钮
                         </div>
                     </div>`;
-
-                // ------ pdf.js 渲染 ------
-                (async () => {
-                    try {
-                        // 设置 worker
-                        if (typeof pdfjsLib === 'undefined') {
-                            throw new Error('pdf.js 未加载');
-                        }
-                        pdfjsLib.GlobalWorkerOptions.workerSrc =
-                            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
-                        const canvasArea = document.getElementById('pdfCanvasArea');
-                        const loadingEl = document.getElementById('pdfLoading');
-                        const prevBtn   = document.getElementById('pdfPrev');
-                        const nextBtn   = document.getElementById('pdfNext');
-                        const pageInfo  = document.getElementById('pdfPageInfo');
-                        const zoomInBtn = document.getElementById('pdfZoomIn');
-                        const zoomOutBtn= document.getElementById('pdfZoomOut');
-                        const zoomLabel = document.getElementById('pdfZoomLabel');
-
-                        if (!canvasArea) return;
-
-                        let pdfDoc    = null;
-                        let currPage  = 1;
-                        let scale     = 1.5;
-                        let rendering = false;
-
-                        const loadingTask = pdfjsLib.getDocument({ url: rawUrl, withCredentials: false });
-                        pdfDoc = await loadingTask.promise;
-
-                        const totalPages = pdfDoc.numPages;
-                        loadingEl && loadingEl.remove();
-
-                        function updatePageControls() {
-                            pageInfo.textContent = `${currPage} / ${totalPages}`;
-                            prevBtn.disabled = currPage <= 1;
-                            nextBtn.disabled = currPage >= totalPages;
-                            zoomLabel.textContent = Math.round(scale * 100) + '%';
-                        }
-
-                        async function renderPage(num) {
-                            if (rendering) return;
-                            rendering = true;
-                            const page = await pdfDoc.getPage(num);
-                            const viewport = page.getViewport({ scale });
-                            const canvas = document.createElement('canvas');
-                            const ctx2d  = canvas.getContext('2d');
-                            canvas.height = viewport.height;
-                            canvas.width  = viewport.width;
-                            canvasArea.innerHTML = '';
-                            canvasArea.appendChild(canvas);
-                            await page.render({ canvasContext: ctx2d, viewport }).promise;
-                            rendering = false;
-                            updatePageControls();
-                        }
-
-                        prevBtn.addEventListener('click', () => {
-                            if (currPage > 1) { currPage--; renderPage(currPage); }
-                        });
-                        nextBtn.addEventListener('click', () => {
-                            if (currPage < totalPages) { currPage++; renderPage(currPage); }
-                        });
-                        zoomInBtn.addEventListener('click', () => {
-                            if (scale < 4) { scale = Math.min(4, +(scale + 0.25).toFixed(2)); renderPage(currPage); }
-                        });
-                        zoomOutBtn.addEventListener('click', () => {
-                            if (scale > 0.5) { scale = Math.max(0.5, +(scale - 0.25).toFixed(2)); renderPage(currPage); }
-                        });
-
-                        prevBtn.disabled = false;
-                        nextBtn.disabled = false;
-                        renderPage(currPage);
-
-                    } catch (err) {
-                        const area = document.getElementById('pdfCanvasArea');
-                        if (area) area.innerHTML = `<div class="pdf-error">
-                            ⚠️ PDF 渲染失败：${err.message}<br><br>
-                            <a href="${rawUrl}" target="_blank" download>⬇ 直接下载文件</a>
-                        </div>`;
-                    }
-                })();
             } else {
                 // Markdown 模式（原逻辑）
                 readerMeta.style.display = '';
