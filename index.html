@@ -6,7 +6,26 @@
     <title>你不知道的黑暗事实</title>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link rel="preconnect" href="https://fonts.loli.net">
-    <link href="https://fonts.loli.net/css2?family=Noto+Serif+SC:wght@300;400;500&family=Ma+Shan+Zheng&family=Raleway:wght@200;300;400&display=swap" rel="stylesheet" onerror="this.onerror=null;this.href='https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500&family=Ma+Shan+Zheng&family=Raleway:wght@200;300;400&display=swap'">
+    <link id="fontLink" href="https://fonts.loli.net/css2?family=Noto+Serif+SC:wght@300;400;500&family=Ma+Shan+Zheng&family=Raleway:wght@200;300;400&display=swap" rel="stylesheet">
+    <script>
+    // 字体加载检测：loli.net → font.im → googleapis（按大陆可访问性排序）
+    (function() {
+        const mirrors = [
+            'https://fonts.loli.net',
+            'https://fonts.font.im',
+            'https://fonts.googleapis.com'
+        ];
+        const path = '/css2?family=Noto+Serif+SC:wght@300;400;500&family=Ma+Shan+Zheng&family=Raleway:wght@200;300;400&display=swap';
+        let idx = 0;
+        const link = document.getElementById('fontLink');
+        link.onerror = function() {
+            idx++;
+            if (idx < mirrors.length) {
+                link.href = mirrors[idx] + path;
+            }
+        };
+    })();
+    </script>
     <style>
         /* ---------- CSS 变量与统一视觉规范 ---------- */
         :root {
@@ -588,6 +607,115 @@
         }
         .moon-hint.visible { opacity: 1; }
 
+        /* ----- 网络状态提示 ----- */
+        #netStatus {
+            position: fixed;
+            top: 24px; left: 50%;
+            transform: translateX(-50%) translateY(-80px);
+            z-index: 400;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            padding: 0.7rem 1.4rem;
+            border-radius: var(--radius-pill);
+            font-family: 'Raleway', sans-serif;
+            font-size: 0.82rem;
+            letter-spacing: 1.5px;
+            backdrop-filter: blur(12px);
+            transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s;
+            opacity: 0;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+        #netStatus.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+        #netStatus.loading {
+            background: rgba(16, 26, 43, 0.85);
+            border: 1px solid rgba(140, 190, 255, 0.25);
+            color: var(--text-muted);
+        }
+        #netStatus.error {
+            background: rgba(60, 20, 20, 0.9);
+            border: 1px solid rgba(255, 80, 60, 0.4);
+            color: #ff9988;
+        }
+        #netStatus.success {
+            background: rgba(20, 50, 30, 0.85);
+            border: 1px solid rgba(80, 200, 100, 0.35);
+            color: #88ddaa;
+        }
+        .net-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        #netStatus.loading .net-dot {
+            background: var(--link-color);
+            animation: netPulse 1s ease-in-out infinite;
+        }
+        #netStatus.error .net-dot { background: #ff5544; }
+        #netStatus.success .net-dot { background: #55cc77; }
+        @keyframes netPulse {
+            0%, 100% { opacity: 0.3; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+        #netStatus .retry-btn {
+            background: rgba(255, 80, 60, 0.2);
+            border: 1px solid rgba(255, 80, 60, 0.4);
+            color: #ff9988;
+            padding: 0.25rem 0.8rem;
+            border-radius: var(--radius-pill);
+            cursor: pointer;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+            margin-left: 0.4rem;
+            transition: background 0.2s;
+        }
+        #netStatus .retry-btn:hover { background: rgba(255, 80, 60, 0.35); }
+
+        /* 内容区网络错误块 */
+        .net-error-block {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            padding: 4rem 2rem;
+            text-align: center;
+            color: var(--text-muted);
+        }
+        .net-error-block .err-icon { font-size: 2.5rem; }
+        .net-error-block .err-title {
+            font-size: 1.1rem;
+            color: #ff9988;
+            letter-spacing: 1px;
+        }
+        .net-error-block .err-desc {
+            font-size: 0.85rem;
+            line-height: 1.7;
+            max-width: 340px;
+            opacity: 0.7;
+        }
+        .net-error-block .err-retry {
+            margin-top: 0.5rem;
+            background: rgba(140, 190, 255, 0.1);
+            border: 1px solid var(--glass-border);
+            color: var(--link-color);
+            padding: 0.6rem 1.8rem;
+            border-radius: var(--radius-pill);
+            cursor: pointer;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .net-error-block .err-retry:hover {
+            background: rgba(140, 190, 255, 0.2);
+            border-color: var(--link-color);
+        }
+
         /* ----- 点击涟漪效果 ----- */
         .ripple {
             position: fixed;
@@ -796,6 +924,10 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<div id="netStatus">
+    <span class="net-dot"></span>
+    <span id="netMsg">正在连接...</span>
+</div>
 
 <div class="app" id="app">
     <div id="homeView" class="view home-view">
@@ -853,46 +985,149 @@
             localStorage.setItem('theme', isLight ? 'light' : 'dark');
         });
 
-        // ---------- 核心数据请求与页面流转 ----------
+        // ---------- 网络状态提示 ----------
+        const netStatusEl = document.getElementById('netStatus');
+        const netMsgEl = document.getElementById('netMsg');
+        let netHideTimer = null;
+
+        function showNetStatus(type, msg, { autohide = 0, onRetry = null } = {}) {
+            clearTimeout(netHideTimer);
+            netStatusEl.className = `show ${type}`;
+            // 清除旧的重试按钮
+            const oldBtn = netStatusEl.querySelector('.retry-btn');
+            if (oldBtn) oldBtn.remove();
+
+            netMsgEl.textContent = msg;
+
+            if (onRetry) {
+                const btn = document.createElement('button');
+                btn.className = 'retry-btn';
+                btn.textContent = '重试';
+                btn.onclick = onRetry;
+                netStatusEl.appendChild(btn);
+            }
+            if (autohide > 0) {
+                netHideTimer = setTimeout(() => {
+                    netStatusEl.classList.remove('show');
+                }, autohide);
+            }
+        }
+
+        function hideNetStatus() {
+            clearTimeout(netHideTimer);
+            netStatusEl.classList.remove('show');
+        }
         const CONFIG = {
             OWNER: 'moohydra',
             REPO: 'moohydra.github.io',
             POSTS_PATH: 'posts',
         };
 
-        // GitHub 在大陆的访问代理
-        // api.github.com 走 ghproxy，raw 内容也走代理
-        const PROXIES = {
-            api: [
-                'https://api.github.com',                          // 直连（境外/VPN）
-                'https://gh-proxy.com/https://api.github.com',     // 代理1
-                'https://ghproxy.net/https://api.github.com',      // 代理2
-            ],
-            raw: [
-                '',                                                 // 直连（原始URL不变）
-                'https://gh-proxy.com/',                           // 代理1
-                'https://ghproxy.net/',                            // 代理2
-            ],
-        };
+        // -------------------------------------------------------
+        // 代理线路配置（按大陆可用性排序，越靠前越优先）
+        //
+        // API 代理：把 api.github.com 的请求转发出去
+        // Raw 代理：raw.githubusercontent.com 文件内容加速
+        //   - 类型 'prefix'：在原 URL 前加上代理域名
+        //   - 类型 'domain'：直接替换 raw.githubusercontent.com 的域名（更快）
+        // -------------------------------------------------------
+        const API_PROXIES = [
+            'https://ghfast.top/https://api.github.com',
+            'https://gh-proxy.com/https://api.github.com',
+            'https://mirror.ghproxy.com/https://api.github.com',
+            'https://ghproxy.vip/https://api.github.com',
+            'https://api.github.com',                              // 直连兜底
+        ];
 
-        // 带自动 fallback 的 fetch：依次尝试各个代理
-        async function fetchWithFallback(buildUrl, proxies) {
-            for (const proxy of proxies) {
-                try {
-                    const url = buildUrl(proxy);
-                    const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
-                    if (resp.ok) return resp;
-                } catch (e) {
-                    // 超时或网络错误，继续尝试下一个
-                }
+        const RAW_PROXIES = [
+            { type: 'domain',  host: 'raw.staticdn.net' },        // 域名替换 CDN，最快
+            { type: 'prefix',  host: 'https://ghfast.top/' },
+            { type: 'prefix',  host: 'https://gh-proxy.com/' },
+            { type: 'prefix',  host: 'https://mirror.ghproxy.com/' },
+            { type: 'prefix',  host: 'https://ghproxy.vip/' },
+            { type: 'direct',  host: '' },                        // 直连兜底
+        ];
+
+        // 把原始 raw URL 按代理规则转换
+        function buildRawUrl(rawUrl, proxy) {
+            if (!rawUrl || rawUrl === '#') return rawUrl;
+            if (proxy.type === 'direct') return rawUrl;
+            if (proxy.type === 'domain') {
+                // https://raw.githubusercontent.com/... → https://raw.staticdn.net/...
+                return rawUrl.replace('raw.githubusercontent.com', proxy.host);
             }
-            return null;
+            // prefix: 直接拼在前面
+            return proxy.host + rawUrl;
         }
 
-        // 把 raw.githubusercontent.com URL 转成走代理的 URL
-        function toProxiedRaw(rawUrl, proxy) {
-            if (!proxy) return rawUrl; // 直连
-            return proxy + rawUrl;
+        // 记录本次会话中探测到的最快线路，避免重复探测
+        let bestApiProxy = null;
+        let bestRawProxy = null;
+
+        // 并行竞速：同时发起所有代理请求，返回最快成功的那个
+        // 比串行方式快得多——不用等第一个超时才试第二个
+        async function raceApiProxies(buildPath) {
+            if (bestApiProxy !== null) {
+                // 已知最快线路，直接用（加一个备用超时）
+                try {
+                    const resp = await fetch(bestApiProxy + buildPath, { signal: AbortSignal.timeout(8000) });
+                    if (resp.ok) return resp;
+                } catch (e) { bestApiProxy = null; } // 失效了，重新探测
+            }
+
+            return new Promise((resolve) => {
+                let settled = false;
+                let pending = API_PROXIES.length;
+
+                API_PROXIES.forEach(proxy => {
+                    const url = proxy + buildPath;
+                    fetch(url, { signal: AbortSignal.timeout(10000) })
+                        .then(resp => {
+                            if (resp.ok && !settled) {
+                                settled = true;
+                                bestApiProxy = proxy;
+                                resolve(resp);
+                            }
+                        })
+                        .catch(() => {})
+                        .finally(() => {
+                            pending--;
+                            if (pending === 0 && !settled) resolve(null);
+                        });
+                });
+            });
+        }
+
+        async function raceRawProxies(rawUrl) {
+            if (bestRawProxy !== null) {
+                try {
+                    const url = buildRawUrl(rawUrl, bestRawProxy);
+                    const resp = await fetch(url, { signal: AbortSignal.timeout(10000) });
+                    if (resp.ok) return { resp, proxy: bestRawProxy };
+                } catch (e) { bestRawProxy = null; }
+            }
+
+            return new Promise((resolve) => {
+                let settled = false;
+                let pending = RAW_PROXIES.length;
+
+                RAW_PROXIES.forEach(proxy => {
+                    const url = buildRawUrl(rawUrl, proxy);
+                    fetch(url, { signal: AbortSignal.timeout(15000) })
+                        .then(resp => {
+                            if (resp.ok && !settled) {
+                                settled = true;
+                                bestRawProxy = proxy;
+                                resolve({ resp, proxy });
+                            }
+                        })
+                        .catch(() => {})
+                        .finally(() => {
+                            pending--;
+                            if (pending === 0 && !settled) resolve(null);
+                        });
+                });
+            });
         }
 
         const MOCK_ARTICLES = [
@@ -976,11 +1211,9 @@
             if (article.fileType === 'pdf') return null;
             if (frontmatterCache.has(article.download_url)) return frontmatterCache.get(article.download_url);
             try {
-                const proxy = workingRawProxy !== null ? workingRawProxy : PROXIES.raw[0];
-                const url = toProxiedRaw(article.download_url, proxy);
-                const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
-                if (!resp.ok) throw new Error('fetch failed');
-                const md = await resp.text();
+                const result = await raceRawProxies(article.download_url);
+                if (!result) throw new Error('all failed');
+                const md = await result.resp.text();
                 const fm = extractFrontmatter(md);
                 frontmatterCache.set(article.download_url, fm);
                 return fm;
@@ -1004,23 +1237,16 @@
             await Promise.allSettled(promises);
         }
 
-        let workingApiProxy = null;  // 记录成功的 API 代理，后续直接用
-        let workingRawProxy = null;  // 记录成功的 raw 代理
+        let workingApiProxy = null;
+        let workingRawProxy = null;
 
         async function fetchArticlesByCategory(category) {
-            // 优先用上次成功的代理
-            const apiProxies = workingApiProxy
-                ? [workingApiProxy, ...PROXIES.api.filter(p => p !== workingApiProxy)]
-                : PROXIES.api;
-
-            const resp = await fetchWithFallback(
-                proxy => `${proxy}/repos/${CONFIG.OWNER}/${CONFIG.REPO}/contents/${CONFIG.POSTS_PATH}/${encodeURIComponent(category)}`,
-                apiProxies
-            );
+            const path = `/repos/${CONFIG.OWNER}/${CONFIG.REPO}/contents/${CONFIG.POSTS_PATH}/${encodeURIComponent(category)}`;
+            const resp = await raceApiProxies(path);
 
             if (!resp) {
-                console.error(`[${category}] 所有代理均失败`);
-                return MOCK_ARTICLES.filter(a => a.category === category).map(a => ({ ...a, created: null }));
+                console.error(`[${category}] 所有线路均失败`);
+                return [];
             }
 
             try {
@@ -1038,11 +1264,10 @@
 
                 return files.map(item => {
                     const isPdf = item.name.toLowerCase().endsWith('.pdf');
-                    const rawUrl = item.download_url || '#';
                     return {
                         title: item.name.replace(/\.(md|pdf)$/i, ''),
-                        category: category,
-                        download_url: rawUrl,   // 原始 raw URL，读取时再套代理
+                        category,
+                        download_url: item.download_url || '#',
                         html_url: item.html_url || '#',
                         fullName: item.name,
                         path: item.path,
@@ -1151,71 +1376,68 @@
                         </div>
                         <div class="pdf-loading" id="pdfLoading">
                             <div class="pdf-loading-spinner"></div>
-                            <span>正在加载 PDF...</span>
+                            <span>正在并行探测最快线路...</span>
                         </div>
                         <iframe class="pdf-iframe" id="pdfFrame" style="display:none"></iframe>
-                        <div class="pdf-fallback" id="pdfFallbackMsg" style="display:none">
-                            PDF 加载失败，请检查网络后重试。
-                        </div>
+                        <div class="pdf-fallback" id="pdfFallbackMsg" style="display:none"></div>
                     </div>`;
 
-                // 依次尝试各代理，用 fetch 拿到二进制再转 Blob URL
-                let blobUrl = null;
-                for (const proxy of PROXIES.raw) {
-                    const url = toProxiedRaw(downloadUrl, proxy);
-                    try {
-                        const resp = await fetch(url, { signal: AbortSignal.timeout(30000) });
-                        if (!resp.ok) continue;
-                        const blob = await resp.blob();
-                        // 强制指定 PDF MIME，避免浏览器误判触发下载
-                        const pdfBlob = new Blob([blob], { type: 'application/pdf' });
-                        blobUrl = URL.createObjectURL(pdfBlob);
-                        workingRawProxy = proxy;
-                        break;
-                    } catch (e) {
-                        console.warn('[PDF] 代理失败:', proxy, e.message);
-                    }
-                }
+                showNetStatus('loading', '正在获取 PDF...');
 
+                const result = await raceRawProxies(downloadUrl);
                 const loading = document.getElementById('pdfLoading');
                 const frame = document.getElementById('pdfFrame');
                 const fallback = document.getElementById('pdfFallbackMsg');
 
-                if (blobUrl) {
+                if (result) {
+                    const blob = await result.resp.blob();
+                    const pdfBlob = new Blob([blob], { type: 'application/pdf' });
+                    const blobUrl = URL.createObjectURL(pdfBlob);
                     frame.src = blobUrl;
                     frame.style.display = '';
                     if (loading) loading.style.display = 'none';
-                    // 页面离开时释放 Blob URL 内存
-                    frame.onload = () => { /* 正常加载 */ };
-                    // 注册清理
                     frame._blobUrl = blobUrl;
+                    showNetStatus('success', 'PDF 加载完成', { autohide: 1500 });
                 } else {
                     if (loading) loading.style.display = 'none';
-                    if (fallback) fallback.style.display = 'block';
+                    if (fallback) {
+                        fallback.style.display = 'block';
+                        fallback.innerHTML = `
+                            <div class="net-error-block">
+                                <div class="err-icon">📡</div>
+                                <div class="err-title">PDF 加载失败</div>
+                                <div class="err-desc">所有线路（直连 + 5条代理）均无响应。<br>大陆用户建议使用代理工具后重试。</div>
+                                <button class="err-retry" onclick="loadAndShowArticle('${downloadUrl}','${title}','pdf','${htmlUrl}')">重新尝试</button>
+                            </div>`;
+                    }
+                    showNetStatus('error', '所有线路均失败，请检查网络', {
+                        onRetry: () => loadAndShowArticle(downloadUrl, title, 'pdf', htmlUrl)
+                    });
                 }
 
             } else {
-                // Markdown 模式
                 readerMeta.style.display = '';
-                articleContentDiv.innerHTML = '<div style="text-align:center; padding: 4rem; color: var(--text-muted);">🌠 正在提取星系数据...</div>';
+                articleContentDiv.innerHTML = '<div style="text-align:center; padding: 4rem; color: var(--text-muted);">🌠 正在并行探测最快线路...</div>';
+                showNetStatus('loading', '正在加载文章...');
 
-                let md = null;
-                for (const proxy of PROXIES.raw) {
-                    const url = toProxiedRaw(downloadUrl, proxy);
-                    try {
-                        const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
-                        if (resp.ok) {
-                            md = await resp.text();
-                            workingRawProxy = proxy;
-                            break;
-                        }
-                    } catch (e) { /* 继续 */ }
-                }
+                const result = await raceRawProxies(downloadUrl);
 
-                if (!md) {
-                    articleContentDiv.innerHTML = `<h2>✨ ${title}</h2><p style="color:#e74c3c;">读取失败，请检查网络连接。</p>`;
+                if (!result) {
+                    articleContentDiv.innerHTML = `
+                        <div class="net-error-block">
+                            <div class="err-icon">📡</div>
+                            <div class="err-title">文章加载失败</div>
+                            <div class="err-desc">所有线路（直连 + 5条代理）均无响应。<br>大陆用户建议使用代理工具后重试。</div>
+                            <button class="err-retry" onclick="loadAndShowArticle('${downloadUrl}','${title}','md','${htmlUrl}')">重新尝试</button>
+                        </div>`;
+                    showNetStatus('error', '所有线路均失败，请检查网络', {
+                        onRetry: () => loadAndShowArticle(downloadUrl, title, 'md', htmlUrl)
+                    });
                     return;
                 }
+
+                const md = await result.resp.text();
+                showNetStatus('success', '加载完成', { autohide: 1500 });
 
                 const fm = extractFrontmatter(md);
                 if (fm) {
@@ -1245,19 +1467,18 @@
 
         // 动态发现 posts/ 下实际存在的子文件夹，作为分类
         async function fetchCategories() {
-            const resp = await fetchWithFallback(
-                proxy => `${proxy}/repos/${CONFIG.OWNER}/${CONFIG.REPO}/contents/${CONFIG.POSTS_PATH}`,
-                PROXIES.api
-            );
+            showNetStatus('loading', '正在连接 GitHub...');
+            const path = `/repos/${CONFIG.OWNER}/${CONFIG.REPO}/contents/${CONFIG.POSTS_PATH}`;
+            const resp = await raceApiProxies(path);
             try {
-                if (!resp) throw new Error('所有代理均失败');
+                if (!resp) throw new Error('所有线路均失败');
                 const data = await resp.json();
                 if (!Array.isArray(data)) throw new Error('返回格式错误');
                 const cats = data.filter(item => item.type === 'dir').map(item => item.name);
                 console.log('[分类扫描] 发现分类:', cats);
                 return cats.length > 0 ? cats : null;
             } catch (e) {
-                console.warn('[分类扫描] 失败，使用 MOCK:', e.message);
+                console.warn('[分类扫描] 失败:', e.message);
                 return null;
             }
         }
@@ -1272,7 +1493,15 @@
                     if (allArticles.length === 0) {
                         articlesListDiv.innerHTML = '<div style="text-align:center; padding: 3rem; color: var(--text-muted);">🌟 正在召唤文章...</div>';
                         showList();
+                        showNetStatus('loading', '正在加载文章列表...');
                         allArticles = await loadAllArticles(categories);
+                        if (allArticles.length === 0) {
+                            showNetStatus('error', '文章列表加载失败', {
+                                onRetry: () => btn.click()
+                            });
+                        } else {
+                            showNetStatus('success', '加载完成', { autohide: 1500 });
+                        }
                     }
                     await setListContext('category', cat);
                     showList();
@@ -1282,21 +1511,28 @@
         }
 
         async function initializeArticles() {
-            // 1. 先扫描实际存在的分类文件夹
             const categories = await fetchCategories();
 
             if (!categories) {
-                discoveredCategories = ['世设', '规则', '角色'];
-                buildCategoryButtons(discoveredCategories);
-                allArticles = MOCK_ARTICLES.map(a => ({ ...a, created: null }));
+                // 网络完全失败
+                showNetStatus('error', '无法连接到 GitHub，请检查网络', {
+                    onRetry: () => { hideNetStatus(); initializeArticles(); }
+                });
+                categoryGrid.innerHTML = `
+                    <div class="net-error-block" style="grid-column:1/-1">
+                        <div class="err-icon">📡</div>
+                        <div class="err-title">无法加载分类</div>
+                        <div class="err-desc">GitHub 连接失败。<br>大陆用户可能需要代理或稍后重试。</div>
+                        <button class="err-retry" onclick="initializeArticles()">重新加载</button>
+                    </div>`;
+                discoveredCategories = [];
+                allArticles = [];
                 return;
             }
 
-            // 2. 用真实分类渲染按钮
+            showNetStatus('success', '连接成功', { autohide: 2000 });
             discoveredCategories = categories;
             buildCategoryButtons(categories);
-
-            // 3. 并行加载所有分类下的文件
             allArticles = await loadAllArticles(categories);
         }
 
