@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>你不知道的黑暗事实</title>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500&family=Ma+Shan+Zheng&family=Raleway:wght@200;300;400&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.loli.net">
+    <link href="https://fonts.loli.net/css2?family=Noto+Serif+SC:wght@300;400;500&family=Ma+Shan+Zheng&family=Raleway:wght@200;300;400&display=swap" rel="stylesheet" onerror="this.onerror=null;this.href='https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500&family=Ma+Shan+Zheng&family=Raleway:wght@200;300;400&display=swap'">
     <style>
         /* ---------- CSS 变量与统一视觉规范 ---------- */
         :root {
@@ -453,8 +453,8 @@
         .pdf-toolbar {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 0.7rem 1.2rem;
+            justify-content: flex-start;
+            padding: 0.7rem 1.4rem;
             background: rgba(0,0,0,0.2);
             border-radius: var(--radius-md) var(--radius-md) 0 0;
             border: 1px solid var(--glass-border);
@@ -497,6 +497,29 @@
             flex-shrink: 0;
         }
         .pdf-fallback a { color: var(--link-color); }
+
+        .pdf-loading {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            border: 1px solid var(--glass-border);
+            border-top: none;
+            border-radius: 0 0 var(--radius-md) var(--radius-md);
+        }
+        .pdf-loading-spinner {
+            width: 36px; height: 36px;
+            border: 3px solid var(--glass-border);
+            border-top-color: var(--link-color);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         /* 让阅读器在 PDF 模式下撑满 */
         .reader-content:has(.pdf-viewer-wrap) {
@@ -835,8 +858,42 @@
             OWNER: 'moohydra',
             REPO: 'moohydra.github.io',
             POSTS_PATH: 'posts',
-            // 不再硬编码分类，改为自动从 GitHub API 扫描
         };
+
+        // GitHub 在大陆的访问代理
+        // api.github.com 走 ghproxy，raw 内容也走代理
+        const PROXIES = {
+            api: [
+                'https://api.github.com',                          // 直连（境外/VPN）
+                'https://gh-proxy.com/https://api.github.com',     // 代理1
+                'https://ghproxy.net/https://api.github.com',      // 代理2
+            ],
+            raw: [
+                '',                                                 // 直连（原始URL不变）
+                'https://gh-proxy.com/',                           // 代理1
+                'https://ghproxy.net/',                            // 代理2
+            ],
+        };
+
+        // 带自动 fallback 的 fetch：依次尝试各个代理
+        async function fetchWithFallback(buildUrl, proxies) {
+            for (const proxy of proxies) {
+                try {
+                    const url = buildUrl(proxy);
+                    const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
+                    if (resp.ok) return resp;
+                } catch (e) {
+                    // 超时或网络错误，继续尝试下一个
+                }
+            }
+            return null;
+        }
+
+        // 把 raw.githubusercontent.com URL 转成走代理的 URL
+        function toProxiedRaw(rawUrl, proxy) {
+            if (!proxy) return rawUrl; // 直连
+            return proxy + rawUrl;
+        }
 
         const MOCK_ARTICLES = [
             { title: '世界构建基础', category: '世设', download_url: '#', fullName: 'world_building.md', fileType: 'md' },
@@ -916,10 +973,12 @@
 
         async function fetchFrontmatterForArticle(article) {
             if (article.download_url === '#') return null;
-            if (article.fileType === 'pdf') return null;  // PDF 无 frontmatter
+            if (article.fileType === 'pdf') return null;
             if (frontmatterCache.has(article.download_url)) return frontmatterCache.get(article.download_url);
             try {
-                const resp = await fetch(article.download_url);
+                const proxy = workingRawProxy !== null ? workingRawProxy : PROXIES.raw[0];
+                const url = toProxiedRaw(article.download_url, proxy);
+                const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
                 if (!resp.ok) throw new Error('fetch failed');
                 const md = await resp.text();
                 const fm = extractFrontmatter(md);
@@ -945,15 +1004,30 @@
             await Promise.allSettled(promises);
         }
 
+        let workingApiProxy = null;  // 记录成功的 API 代理，后续直接用
+        let workingRawProxy = null;  // 记录成功的 raw 代理
+
         async function fetchArticlesByCategory(category) {
-            const url = `https://api.github.com/repos/${CONFIG.OWNER}/${CONFIG.REPO}/contents/${CONFIG.POSTS_PATH}/${encodeURIComponent(category)}`;
+            // 优先用上次成功的代理
+            const apiProxies = workingApiProxy
+                ? [workingApiProxy, ...PROXIES.api.filter(p => p !== workingApiProxy)]
+                : PROXIES.api;
+
+            const resp = await fetchWithFallback(
+                proxy => `${proxy}/repos/${CONFIG.OWNER}/${CONFIG.REPO}/contents/${CONFIG.POSTS_PATH}/${encodeURIComponent(category)}`,
+                apiProxies
+            );
+
+            if (!resp) {
+                console.error(`[${category}] 所有代理均失败`);
+                return MOCK_ARTICLES.filter(a => a.category === category).map(a => ({ ...a, created: null }));
+            }
+
             try {
-                const resp = await fetch(url);
-                if (!resp.ok) return [];
                 const data = await resp.json();
                 if (!Array.isArray(data)) return [];
 
-                console.log(`[${category}] GitHub API 返回 ${data.length} 个条目:`, data.map(i => i.name));
+                console.log(`[${category}] 返回 ${data.length} 个条目:`, data.map(i => i.name));
 
                 const files = data.filter(item => {
                     const name = item.name.toLowerCase();
@@ -964,11 +1038,11 @@
 
                 return files.map(item => {
                     const isPdf = item.name.toLowerCase().endsWith('.pdf');
-                    const url = item.download_url || item.html_url || '#';
+                    const rawUrl = item.download_url || '#';
                     return {
                         title: item.name.replace(/\.(md|pdf)$/i, ''),
                         category: category,
-                        download_url: url,
+                        download_url: rawUrl,   // 原始 raw URL，读取时再套代理
                         html_url: item.html_url || '#',
                         fullName: item.name,
                         path: item.path,
@@ -977,8 +1051,8 @@
                     };
                 });
             } catch (e) {
-                console.error(`[${category}] fetch 出错:`, e);
-                return MOCK_ARTICLES.filter(a => a.category === category).map(a => ({ ...a, created: null }));
+                console.error(`[${category}] 解析出错:`, e);
+                return [];
             }
         }
 
@@ -1070,49 +1144,86 @@
 
             if (fileType === 'pdf') {
                 readerMeta.style.display = 'none';
-                // 优先用 download_url 直接嵌入，GitHub raw 文件支持跨域
-                const embedUrl = downloadUrl && downloadUrl !== '#' ? downloadUrl : htmlUrl;
-                const openUrl = htmlUrl && htmlUrl !== '#' ? htmlUrl : downloadUrl;
                 articleContentDiv.innerHTML = `
                     <div class="pdf-viewer-wrap">
                         <div class="pdf-toolbar">
                             <span class="pdf-title-label">📕 ${title}</span>
-                            <div style="display:flex;gap:0.8rem;align-items:center">
-                                <a class="pdf-download-btn" href="${embedUrl}" target="_blank" download>⬇ 下载</a>
-                                <a class="pdf-download-btn" href="${openUrl}" target="_blank">↗ 在 GitHub 查看</a>
-                            </div>
                         </div>
-                        <iframe
-                            class="pdf-iframe"
-                            src="${embedUrl}"
-                            allowfullscreen
-                            id="pdfFrame"
-                        ></iframe>
-                        <div class="pdf-fallback">
-                            若 PDF 无法内嵌显示，请点击上方"下载"或"在 GitHub 查看"按钮
+                        <div class="pdf-loading" id="pdfLoading">
+                            <div class="pdf-loading-spinner"></div>
+                            <span>正在加载 PDF...</span>
+                        </div>
+                        <iframe class="pdf-iframe" id="pdfFrame" style="display:none"></iframe>
+                        <div class="pdf-fallback" id="pdfFallbackMsg" style="display:none">
+                            PDF 加载失败，请检查网络后重试。
                         </div>
                     </div>`;
+
+                // 依次尝试各代理，用 fetch 拿到二进制再转 Blob URL
+                let blobUrl = null;
+                for (const proxy of PROXIES.raw) {
+                    const url = toProxiedRaw(downloadUrl, proxy);
+                    try {
+                        const resp = await fetch(url, { signal: AbortSignal.timeout(30000) });
+                        if (!resp.ok) continue;
+                        const blob = await resp.blob();
+                        // 强制指定 PDF MIME，避免浏览器误判触发下载
+                        const pdfBlob = new Blob([blob], { type: 'application/pdf' });
+                        blobUrl = URL.createObjectURL(pdfBlob);
+                        workingRawProxy = proxy;
+                        break;
+                    } catch (e) {
+                        console.warn('[PDF] 代理失败:', proxy, e.message);
+                    }
+                }
+
+                const loading = document.getElementById('pdfLoading');
+                const frame = document.getElementById('pdfFrame');
+                const fallback = document.getElementById('pdfFallbackMsg');
+
+                if (blobUrl) {
+                    frame.src = blobUrl;
+                    frame.style.display = '';
+                    if (loading) loading.style.display = 'none';
+                    // 页面离开时释放 Blob URL 内存
+                    frame.onload = () => { /* 正常加载 */ };
+                    // 注册清理
+                    frame._blobUrl = blobUrl;
+                } else {
+                    if (loading) loading.style.display = 'none';
+                    if (fallback) fallback.style.display = 'block';
+                }
+
             } else {
-                // Markdown 模式（原逻辑）
+                // Markdown 模式
                 readerMeta.style.display = '';
                 articleContentDiv.innerHTML = '<div style="text-align:center; padding: 4rem; color: var(--text-muted);">🌠 正在提取星系数据...</div>';
 
-                try {
-                    const resp = await fetch(downloadUrl);
-                    if (!resp.ok) throw new Error('网络错误');
-                    const md = await resp.text();
-
-                    const fm = extractFrontmatter(md);
-                    if (fm) {
-                        if (fm.created) readerCreated.innerText = formatDateTime(fm.created);
-                        if (fm.modified) readerModified.innerText = formatDateTime(fm.modified);
-                    }
-
-                    const contentWithoutFrontmatter = md.replace(/^---\s*\n[\s\S]*?\n---\s*\n/, '');
-                    articleContentDiv.innerHTML = marked.parse(contentWithoutFrontmatter);
-                } catch (e) {
-                    articleContentDiv.innerHTML = `<h2>✨ ${title}</h2><p style="color:#e74c3c;">读取失败，信号丢失。</p>`;
+                let md = null;
+                for (const proxy of PROXIES.raw) {
+                    const url = toProxiedRaw(downloadUrl, proxy);
+                    try {
+                        const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
+                        if (resp.ok) {
+                            md = await resp.text();
+                            workingRawProxy = proxy;
+                            break;
+                        }
+                    } catch (e) { /* 继续 */ }
                 }
+
+                if (!md) {
+                    articleContentDiv.innerHTML = `<h2>✨ ${title}</h2><p style="color:#e74c3c;">读取失败，请检查网络连接。</p>`;
+                    return;
+                }
+
+                const fm = extractFrontmatter(md);
+                if (fm) {
+                    if (fm.created) readerCreated.innerText = formatDateTime(fm.created);
+                    if (fm.modified) readerModified.innerText = formatDateTime(fm.modified);
+                }
+                const contentWithoutFrontmatter = md.replace(/^---\s*\n[\s\S]*?\n---\s*\n/, '');
+                articleContentDiv.innerHTML = marked.parse(contentWithoutFrontmatter);
             }
         }
 
@@ -1134,15 +1245,15 @@
 
         // 动态发现 posts/ 下实际存在的子文件夹，作为分类
         async function fetchCategories() {
-            const url = `https://api.github.com/repos/${CONFIG.OWNER}/${CONFIG.REPO}/contents/${CONFIG.POSTS_PATH}`;
+            const resp = await fetchWithFallback(
+                proxy => `${proxy}/repos/${CONFIG.OWNER}/${CONFIG.REPO}/contents/${CONFIG.POSTS_PATH}`,
+                PROXIES.api
+            );
             try {
-                const resp = await fetch(url);
-                if (!resp.ok) throw new Error('无法获取分类列表');
+                if (!resp) throw new Error('所有代理均失败');
                 const data = await resp.json();
                 if (!Array.isArray(data)) throw new Error('返回格式错误');
-                const cats = data
-                    .filter(item => item.type === 'dir')
-                    .map(item => item.name);
+                const cats = data.filter(item => item.type === 'dir').map(item => item.name);
                 console.log('[分类扫描] 发现分类:', cats);
                 return cats.length > 0 ? cats : null;
             } catch (e) {
