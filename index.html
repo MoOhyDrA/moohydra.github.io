@@ -830,24 +830,25 @@
             localStorage.setItem('theme', isLight ? 'light' : 'dark');
         });
 
-        // ---------- 核心数据请求与页面流转 (保持原有业务逻辑) ----------
+        // ---------- 核心数据请求与页面流转 ----------
         const CONFIG = {
             OWNER: 'moohydra',
             REPO: 'moohydra.github.io',
             POSTS_PATH: 'posts',
-            CATEGORIES: ['世设', '规则', '角色', '战报', '地图', '资源', '小说', '开发', '杂谈']
+            // 不再硬编码分类，改为自动从 GitHub API 扫描
         };
 
         const MOCK_ARTICLES = [
-            { title: '世界构建基础', category: '世设', download_url: '#', fullName: 'world_building.md' },
-            { title: '神系设定', category: '世设', download_url: '#', fullName: 'pantheon.md' },
-            { title: '战斗规则详解', category: '规则', download_url: '#', fullName: 'combat.md' },
-            { title: '创建角色指南', category: '角色', download_url: '#', fullName: 'character_creation.md' },
+            { title: '世界构建基础', category: '世设', download_url: '#', fullName: 'world_building.md', fileType: 'md' },
+            { title: '神系设定', category: '世设', download_url: '#', fullName: 'pantheon.md', fileType: 'md' },
+            { title: '战斗规则详解', category: '规则', download_url: '#', fullName: 'combat.md', fileType: 'md' },
+            { title: '创建角色指南', category: '角色', download_url: '#', fullName: 'character_creation.md', fileType: 'md' },
         ];
 
         let allArticles = [];
         let filteredArticles = [];
         let currentCategory = null;
+        let discoveredCategories = [];
         const frontmatterCache = new Map();
 
         const homeView = document.getElementById('homeView');
@@ -981,8 +982,8 @@
             }
         }
 
-        async function loadAllArticles() {
-            const promises = CONFIG.CATEGORIES.map(cat => fetchArticlesByCategory(cat));
+        async function loadAllArticles(categories) {
+            const promises = categories.map(cat => fetchArticlesByCategory(cat));
             const results = await Promise.allSettled(promises);
             let articles = [];
             results.forEach((res) => { if (res.status === 'fulfilled') articles = articles.concat(res.value); });
@@ -1131,8 +1132,28 @@
             renderArticleList();
         }
 
-        function initCategoryButtons() {
-            CONFIG.CATEGORIES.forEach(cat => {
+        // 动态发现 posts/ 下实际存在的子文件夹，作为分类
+        async function fetchCategories() {
+            const url = `https://api.github.com/repos/${CONFIG.OWNER}/${CONFIG.REPO}/contents/${CONFIG.POSTS_PATH}`;
+            try {
+                const resp = await fetch(url);
+                if (!resp.ok) throw new Error('无法获取分类列表');
+                const data = await resp.json();
+                if (!Array.isArray(data)) throw new Error('返回格式错误');
+                const cats = data
+                    .filter(item => item.type === 'dir')
+                    .map(item => item.name);
+                console.log('[分类扫描] 发现分类:', cats);
+                return cats.length > 0 ? cats : null;
+            } catch (e) {
+                console.warn('[分类扫描] 失败，使用 MOCK:', e.message);
+                return null;
+            }
+        }
+
+        function buildCategoryButtons(categories) {
+            categoryGrid.innerHTML = '';
+            categories.forEach(cat => {
                 const btn = document.createElement('div');
                 btn.className = 'cat-card';
                 btn.innerText = cat;
@@ -1140,7 +1161,7 @@
                     if (allArticles.length === 0) {
                         articlesListDiv.innerHTML = '<div style="text-align:center; padding: 3rem; color: var(--text-muted);">🌟 正在召唤文章...</div>';
                         showList();
-                        allArticles = await loadAllArticles();
+                        allArticles = await loadAllArticles(categories);
                     }
                     await setListContext('category', cat);
                     showList();
@@ -1150,11 +1171,22 @@
         }
 
         async function initializeArticles() {
-            try {
-                allArticles = await loadAllArticles();
-            } catch (e) {
+            // 1. 先扫描实际存在的分类文件夹
+            const categories = await fetchCategories();
+
+            if (!categories) {
+                discoveredCategories = ['世设', '规则', '角色'];
+                buildCategoryButtons(discoveredCategories);
                 allArticles = MOCK_ARTICLES.map(a => ({ ...a, created: null }));
+                return;
             }
+
+            // 2. 用真实分类渲染按钮
+            discoveredCategories = categories;
+            buildCategoryButtons(categories);
+
+            // 3. 并行加载所有分类下的文件
+            allArticles = await loadAllArticles(categories);
         }
 
         backHomeBtn.addEventListener('click', showHome);
@@ -1166,7 +1198,7 @@
             if (allArticles.length === 0) {
                 articlesListDiv.innerHTML = '<div style="text-align:center; padding: 3rem; color: var(--text-muted);">🔭 正在深空检索...</div>';
                 showList();
-                allArticles = await loadAllArticles();
+                allArticles = await loadAllArticles(discoveredCategories);
             }
             await setListContext('search', kw);
             showList();
@@ -1191,7 +1223,6 @@
         });
 
         (async function init() {
-            initCategoryButtons();
             await initializeArticles();
         })();
 
