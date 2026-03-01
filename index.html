@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>你不知道的黑暗事实</title>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500&family=Ma+Shan+Zheng&family=Raleway:wght@200;300;400&display=swap" rel="stylesheet">
     <style>
@@ -422,6 +423,137 @@
             color: var(--text-muted);
         }
 
+        /* ----- PDF 文件徽章 ----- */
+        .file-badge {
+            display: inline-block;
+            font-size: 0.6rem;
+            font-family: 'Raleway', sans-serif;
+            font-weight: 400;
+            letter-spacing: 1.5px;
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            margin-left: 0.5rem;
+            vertical-align: middle;
+            position: relative;
+            top: -1px;
+        }
+        .pdf-badge {
+            background: rgba(220, 80, 60, 0.2);
+            border: 1px solid rgba(220, 80, 60, 0.4);
+            color: #ff8070;
+        }
+
+        /* ----- PDF 阅读器 (pdf.js canvas 渲染) ----- */
+        .pdf-viewer-wrap {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+        }
+        .pdf-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.7rem 1.2rem;
+            background: rgba(0,0,0,0.25);
+            border-radius: var(--radius-md) var(--radius-md) 0 0;
+            border: 1px solid var(--glass-border);
+            border-bottom: none;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .pdf-title-label {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+        }
+        .pdf-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .pdf-btn {
+            font-family: 'Raleway', sans-serif;
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+            color: var(--link-color);
+            background: transparent;
+            text-decoration: none;
+            padding: 0.4rem 0.9rem;
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-pill);
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .pdf-btn:hover:not(:disabled) {
+            background: var(--item-hover);
+            border-color: var(--link-color);
+        }
+        .pdf-btn:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+        .pdf-page-info {
+            font-family: 'Raleway', sans-serif;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            min-width: 80px;
+            text-align: center;
+        }
+        .pdf-zoom-label {
+            font-family: 'Raleway', sans-serif;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            min-width: 44px;
+            text-align: center;
+        }
+        .pdf-canvas-area {
+            width: 100%;
+            overflow-y: auto;
+            overflow-x: auto;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--glass-border);
+            border-radius: 0 0 var(--radius-md) var(--radius-md);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 1.5rem 1rem;
+            gap: 1.2rem;
+            max-height: calc(100vh - 260px);
+            min-height: 480px;
+        }
+        .pdf-canvas-area canvas {
+            display: block;
+            max-width: 100%;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+            border-radius: 4px;
+        }
+        .pdf-loading {
+            color: var(--text-muted);
+            font-family: 'Raleway', sans-serif;
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            padding: 4rem;
+            text-align: center;
+        }
+        .pdf-error {
+            color: #e88;
+            font-size: 0.9rem;
+            padding: 3rem;
+            text-align: center;
+        }
+        .pdf-error a { color: var(--link-color); }
+
+        /* 让阅读器在 PDF 模式下去掉内边距 */
+        .reader-content:has(.pdf-viewer-wrap) {
+            padding: 0;
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            backdrop-filter: none;
+        }
+
         /* ----- 月亮装饰 ----- */
         .moon {
             position: fixed;
@@ -830,6 +962,7 @@
 
         async function fetchFrontmatterForArticle(article) {
             if (article.download_url === '#') return null;
+            if (article.fileType === 'pdf') return null;  // PDF 无 frontmatter
             if (frontmatterCache.has(article.download_url)) return frontmatterCache.get(article.download_url);
             try {
                 const resp = await fetch(article.download_url);
@@ -865,17 +998,32 @@
                 if (!resp.ok) return [];
                 const data = await resp.json();
                 if (!Array.isArray(data)) return [];
-                return data
-                    .filter(item => item.name.endsWith('.md') && item.type === 'file')
-                    .map(item => ({
-                        title: item.name.replace(/\.md$/i, ''),
+
+                console.log(`[${category}] GitHub API 返回 ${data.length} 个条目:`, data.map(i => i.name));
+
+                const files = data.filter(item => {
+                    const name = item.name.toLowerCase();
+                    return (name.endsWith('.md') || name.endsWith('.pdf')) && item.type === 'file';
+                });
+
+                console.log(`[${category}] 过滤后 ${files.length} 个文件:`, files.map(i => i.name));
+
+                return files.map(item => {
+                    const isPdf = item.name.toLowerCase().endsWith('.pdf');
+                    const url = item.download_url || item.html_url || '#';
+                    return {
+                        title: item.name.replace(/\.(md|pdf)$/i, ''),
                         category: category,
-                        download_url: item.download_url,
+                        download_url: url,
+                        html_url: item.html_url || '#',
                         fullName: item.name,
                         path: item.path,
                         created: null,
-                    }));
+                        fileType: isPdf ? 'pdf' : 'md',
+                    };
+                });
             } catch (e) {
+                console.error(`[${category}] fetch 出错:`, e);
                 return MOCK_ARTICLES.filter(a => a.category === category).map(a => ({ ...a, created: null }));
             }
         }
@@ -911,16 +1059,27 @@
             return { groups, letters };
         }
 
+        // 用 Map 存储文章引用，避免 URL 在 HTML attribute 中被转义破坏
+        const articleIndexMap = new Map();
+
         function renderArticleList() {
             const { groups, letters } = groupByFirstLetter(filteredArticles);
+            articleIndexMap.clear();
+            // 重新建立 index → article 映射
+            filteredArticles.forEach((art, idx) => articleIndexMap.set(String(idx), art));
+
             let html = '';
             for (let letter of letters) {
                 const articleGroup = groups.get(letter) || [];
                 html += `<div class="letter-group"><div class="letter-header">${letter}</div>`;
                 articleGroup.forEach(art => {
+                    const idx = filteredArticles.indexOf(art);
                     const dateStr = art.created ? formatDateTime(art.created) : '';
-                    html += `<div class="article-item" data-url="${art.download_url}" data-title="${art.title}">
-                                <span>📄 ${art.title}</span>`;
+                    const isPdf = art.fileType === 'pdf';
+                    const icon = isPdf ? '📕' : '📄';
+                    const badge = isPdf ? '<span class="file-badge pdf-badge">PDF</span>' : '';
+                    html += `<div class="article-item" data-idx="${idx}">
+                                <span>${icon} ${art.title}${badge}</span>`;
                     if (dateStr) html += `<span class="article-date">${dateStr}</span>`;
                     html += `</div>`;
                 });
@@ -933,10 +1092,11 @@
 
             document.querySelectorAll('.article-item').forEach(el => {
                 el.addEventListener('click', () => {
-                    const url = el.dataset.url;
-                    const title = el.dataset.title;
-                    if (url) {
-                        loadAndShowArticle(url, title);
+                    const art = articleIndexMap.get(el.dataset.idx);
+                    if (!art) return;
+                    const { download_url: url, html_url: htmlUrl = '', title, fileType = 'md' } = art;
+                    if (url && url !== '#') {
+                        loadAndShowArticle(url, title, fileType, htmlUrl);
                     } else {
                         articleContentDiv.innerHTML = `<h2>✨ ${title}</h2><p>这是一个模拟文件，请配置真实 GitHub 仓库环境。</p>`;
                         readerTitle.innerText = title;
@@ -946,28 +1106,142 @@
             });
         }
 
-        async function loadAndShowArticle(downloadUrl, title) {
+        async function loadAndShowArticle(downloadUrl, title, fileType = 'md', htmlUrl = '') {
             readerTitle.innerText = title;
             readerCreated.innerText = '--';
             readerModified.innerText = '--';
-            articleContentDiv.innerHTML = '<div style="text-align:center; padding: 4rem; color: var(--text-muted);">🌠 正在提取星系数据...</div>';
             showReader();
 
-            try {
-                const resp = await fetch(downloadUrl);
-                if (!resp.ok) throw new Error('网络错误');
-                const md = await resp.text();
+            const readerMeta = document.getElementById('readerMeta');
 
-                const fm = extractFrontmatter(md);
-                if (fm) {
-                    if (fm.created) readerCreated.innerText = formatDateTime(fm.created);
-                    if (fm.modified) readerModified.innerText = formatDateTime(fm.modified);
+            if (fileType === 'pdf') {
+                readerMeta.style.display = 'none';
+                const rawUrl = downloadUrl && downloadUrl !== '#' ? downloadUrl : htmlUrl;
+                const openUrl = htmlUrl && htmlUrl !== '#' ? htmlUrl : downloadUrl;
+
+                articleContentDiv.innerHTML = `
+                    <div class="pdf-viewer-wrap" id="pdfViewerWrap">
+                        <div class="pdf-toolbar">
+                            <span class="pdf-title-label">📕 ${title}</span>
+                            <div class="pdf-controls">
+                                <button class="pdf-btn" id="pdfPrev" disabled>‹ 上页</button>
+                                <span class="pdf-page-info" id="pdfPageInfo">— / —</span>
+                                <button class="pdf-btn" id="pdfNext" disabled>下页 ›</button>
+                                <span style="width:1px;height:1.2em;background:var(--glass-border);display:inline-block;margin:0 0.2rem;"></span>
+                                <button class="pdf-btn" id="pdfZoomOut">－</button>
+                                <span class="pdf-zoom-label" id="pdfZoomLabel">100%</span>
+                                <button class="pdf-btn" id="pdfZoomIn">＋</button>
+                                <span style="width:1px;height:1.2em;background:var(--glass-border);display:inline-block;margin:0 0.2rem;"></span>
+                                <a class="pdf-btn" href="${rawUrl}" target="_blank" download>⬇ 下载</a>
+                                <a class="pdf-btn" href="${openUrl}" target="_blank">↗ GitHub</a>
+                            </div>
+                        </div>
+                        <div class="pdf-canvas-area" id="pdfCanvasArea">
+                            <div class="pdf-loading" id="pdfLoading">🌠 正在渲染 PDF...</div>
+                        </div>
+                    </div>`;
+
+                // ------ pdf.js 渲染 ------
+                (async () => {
+                    try {
+                        // 设置 worker
+                        if (typeof pdfjsLib === 'undefined') {
+                            throw new Error('pdf.js 未加载');
+                        }
+                        pdfjsLib.GlobalWorkerOptions.workerSrc =
+                            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+                        const canvasArea = document.getElementById('pdfCanvasArea');
+                        const loadingEl = document.getElementById('pdfLoading');
+                        const prevBtn   = document.getElementById('pdfPrev');
+                        const nextBtn   = document.getElementById('pdfNext');
+                        const pageInfo  = document.getElementById('pdfPageInfo');
+                        const zoomInBtn = document.getElementById('pdfZoomIn');
+                        const zoomOutBtn= document.getElementById('pdfZoomOut');
+                        const zoomLabel = document.getElementById('pdfZoomLabel');
+
+                        if (!canvasArea) return;
+
+                        let pdfDoc    = null;
+                        let currPage  = 1;
+                        let scale     = 1.5;
+                        let rendering = false;
+
+                        const loadingTask = pdfjsLib.getDocument({ url: rawUrl, withCredentials: false });
+                        pdfDoc = await loadingTask.promise;
+
+                        const totalPages = pdfDoc.numPages;
+                        loadingEl && loadingEl.remove();
+
+                        function updatePageControls() {
+                            pageInfo.textContent = `${currPage} / ${totalPages}`;
+                            prevBtn.disabled = currPage <= 1;
+                            nextBtn.disabled = currPage >= totalPages;
+                            zoomLabel.textContent = Math.round(scale * 100) + '%';
+                        }
+
+                        async function renderPage(num) {
+                            if (rendering) return;
+                            rendering = true;
+                            const page = await pdfDoc.getPage(num);
+                            const viewport = page.getViewport({ scale });
+                            const canvas = document.createElement('canvas');
+                            const ctx2d  = canvas.getContext('2d');
+                            canvas.height = viewport.height;
+                            canvas.width  = viewport.width;
+                            canvasArea.innerHTML = '';
+                            canvasArea.appendChild(canvas);
+                            await page.render({ canvasContext: ctx2d, viewport }).promise;
+                            rendering = false;
+                            updatePageControls();
+                        }
+
+                        prevBtn.addEventListener('click', () => {
+                            if (currPage > 1) { currPage--; renderPage(currPage); }
+                        });
+                        nextBtn.addEventListener('click', () => {
+                            if (currPage < totalPages) { currPage++; renderPage(currPage); }
+                        });
+                        zoomInBtn.addEventListener('click', () => {
+                            if (scale < 4) { scale = Math.min(4, +(scale + 0.25).toFixed(2)); renderPage(currPage); }
+                        });
+                        zoomOutBtn.addEventListener('click', () => {
+                            if (scale > 0.5) { scale = Math.max(0.5, +(scale - 0.25).toFixed(2)); renderPage(currPage); }
+                        });
+
+                        prevBtn.disabled = false;
+                        nextBtn.disabled = false;
+                        renderPage(currPage);
+
+                    } catch (err) {
+                        const area = document.getElementById('pdfCanvasArea');
+                        if (area) area.innerHTML = `<div class="pdf-error">
+                            ⚠️ PDF 渲染失败：${err.message}<br><br>
+                            <a href="${rawUrl}" target="_blank" download>⬇ 直接下载文件</a>
+                        </div>`;
+                    }
+                })();
+            } else {
+                // Markdown 模式（原逻辑）
+                readerMeta.style.display = '';
+                articleContentDiv.innerHTML = '<div style="text-align:center; padding: 4rem; color: var(--text-muted);">🌠 正在提取星系数据...</div>';
+
+                try {
+                    const resp = await fetch(downloadUrl);
+                    if (!resp.ok) throw new Error('网络错误');
+                    const md = await resp.text();
+
+                    const fm = extractFrontmatter(md);
+                    if (fm) {
+                        if (fm.created) readerCreated.innerText = formatDateTime(fm.created);
+                        if (fm.modified) readerModified.innerText = formatDateTime(fm.modified);
+                    }
+
+                    const contentWithoutFrontmatter = md.replace(/^---\s*\n[\s\S]*?\n---\s*\n/, '');
+                    articleContentDiv.innerHTML = marked.parse(contentWithoutFrontmatter);
+                } catch (e) {
+                    articleContentDiv.innerHTML = `<h2>✨ ${title}</h2><p style="color:#e74c3c;">读取失败，信号丢失。</p>`;
                 }
-
-                const contentWithoutFrontmatter = md.replace(/^---\s*\n[\s\S]*?\n---\s*\n/, '');
-                articleContentDiv.innerHTML = marked.parse(contentWithoutFrontmatter);
-            } catch (e) {
-                articleContentDiv.innerHTML = `<h2>✨ ${title}</h2><p style="color:#e74c3c;">读取失败，信号丢失。</p>`;
             }
         }
 
