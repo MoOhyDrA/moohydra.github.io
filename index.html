@@ -110,7 +110,6 @@
             padding-bottom: 56px;
         }
 
-        /* ─── 蒙德里安背景网格 ─── */
         .bg-grid {
             position: fixed;
             inset: 0;
@@ -154,7 +153,7 @@
             top: 66%;
         }
 
-        /* ─── 蒙德里安主题矩阵（重构版）─── */
+        /* 蒙德里安主题矩阵 */
         .theme-grid {
             position: fixed;
             top: 28px;
@@ -207,7 +206,6 @@
             position: relative;
         }
 
-        /* 各模式颜色（始终不变） */
         .theme-cell[data-mode="light"] {
             --cell-bg: #ffffff;
         }
@@ -221,7 +219,7 @@
             --cell-bg: #e8f5e9;
         }
 
-        /* ─── 底部钢琴条 ─── */
+        /* 底部钢琴条 */
         .piano-bar {
             position: fixed;
             bottom: 0;
@@ -293,7 +291,7 @@
             opacity: 0.25;
         }
 
-        /* ─── 网络状态 ─── */
+        /* 网络状态条 */
         #netStatus {
             position: fixed;
             top: 32px;
@@ -380,7 +378,7 @@
             border-color: var(--ink);
         }
 
-        /* ─── 视图系统 ─── */
+        /* 视图系统 */
         .app {
             position: relative;
             min-height: 100vh;
@@ -408,7 +406,7 @@
             pointer-events: none;
         }
 
-        /* ─── 主页 ─── */
+        /* 主页 */
         .home-view {
             display: grid;
             grid-template-rows: 1fr auto 1fr;
@@ -596,7 +594,7 @@
             transform: scale(0.98);
         }
 
-        /* ─── 列表页 ─── */
+        /* 列表页 */
         .list-view {
             justify-content: flex-start;
             padding: 120px 48px 80px;
@@ -768,8 +766,14 @@
         .excel-badge {
             color: #2a9d8f;
         }
+        .audio-badge {
+            color: #9c89b8;
+        }
+        .video-badge {
+            color: #f77f00;
+        }
 
-        /* ─── 阅读页 ─── */
+        /* 阅读页 */
         .reader-view {
             justify-content: flex-start;
             padding: 0;
@@ -919,7 +923,31 @@
             margin-bottom: 8px;
         }
 
-        /* ─── PDF 阅读器 ─── */
+        /* 媒体播放器样式 */
+        .media-player-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 24px;
+        }
+        .media-player-container audio,
+        .media-player-container video {
+            width: 100%;
+            max-width: 720px;
+            border: 2px solid var(--ink);
+            background: var(--canvas-secondary);
+        }
+        .media-player-label {
+            font-family: var(--font-sans);
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--ink-tertiary);
+        }
+
+        /* PDF 阅读器 */
         .pdf-viewer-wrap {
             display: flex;
             flex-direction: column;
@@ -987,7 +1015,7 @@
             background: white;
         }
 
-        /* ─── Excel ─── */
+        /* Excel */
         .excel-toolbar-compact {
             display: flex;
             align-items: center;
@@ -1066,7 +1094,6 @@
             background: rgba(27, 67, 50, 0.03);
         }
 
-        /* ─── 错误块 ─── */
         .net-error-block {
             display: flex;
             flex-direction: column;
@@ -1112,7 +1139,7 @@
             box-shadow: 4px 4px 0 var(--accent-yellow);
         }
 
-        /* ─── 吃豆人 ─── */
+        /* 吃豆人 */
         #pacmanView {
             display: flex;
             flex-direction: column;
@@ -1239,7 +1266,7 @@
             }
         }
 
-        /* ─── 响应式 ─── */
+        /* 响应式 */
         @media (max-width: 900px) {
             .home-view {
                 padding: 100px 24px 60px;
@@ -1381,7 +1408,6 @@
         <div class="grid-h"></div>
     </div>
 
-    <!-- 蒙德里安主题矩阵（重构版） -->
     <div class="theme-grid" id="themeGrid" aria-label="主题切换器 - 蒙德里安风格" title="点击色块切换主题">
         <button class="theme-cell" data-mode="light" title="白昼模式 · 当前最大区域" aria-label="切换至白昼模式"></button>
         <button class="theme-cell" data-mode="dark" title="暗夜模式" aria-label="切换至暗夜模式"></button>
@@ -1389,7 +1415,6 @@
         <button class="theme-cell" data-mode="green" title="浅绿阅读模式" aria-label="切换至浅绿模式"></button>
     </div>
 
-    <!-- 底部钢琴条 -->
     <div class="piano-bar" id="pianoBar">
         <button class="piano-key" data-note="0" style="--key-bg: var(--accent-red); --key-fg: #fff;">DO</button>
         <button class="piano-key" data-note="1" style="--key-bg: var(--accent-yellow); --key-fg: var(--ink);">RE</button>
@@ -1417,7 +1442,6 @@
     <div id="netStatus"><span class="net-dot"></span><span id="netMsg">正在连接...</span></div>
 
     <div class="app" id="app">
-        <!-- 主页 -->
         <div id="homeView" class="view home-view">
             <div class="brand-lockup">
                 <div class="brand">暗黑文库</div>
@@ -1432,7 +1456,6 @@
             </div>
         </div>
 
-        <!-- 列表页 -->
         <div id="listView" class="view list-view hidden">
             <div class="list-header">
                 <button class="back-btn" id="backHomeBtn">返回主页</button>
@@ -1445,7 +1468,6 @@
             <div class="articles-container" id="articlesList"></div>
         </div>
 
-        <!-- 阅读页 -->
         <div id="readerView" class="view reader-view hidden">
             <div class="reader-hero">
                 <div class="reader-hero-inner">
@@ -1467,12 +1489,10 @@
 
     <script>
         (function() {
-            // ─── 蒙德里安主题矩阵 ───
             const themeGrid = document.getElementById('themeGrid');
             const themeCells = themeGrid.querySelectorAll('.theme-cell');
             const modes = ['light', 'dark', 'warm', 'green'];
 
-            // 网格区域标识符映射
             const areaMap = {
                 'light': 'L',
                 'dark': 'D',
@@ -1480,7 +1500,6 @@
                 'green': 'G'
             };
 
-            // 4套布局定义 — 当前主题始终占据 2×2 最大区域
             const layoutTemplates = {
                 light: [
                     '"L L G"',
@@ -1512,16 +1531,11 @@
             }
 
             function updateThemeGridLayout(mode) {
-                // 设置 grid-template-areas
                 const template = layoutTemplates[mode] || layoutTemplates['light'];
                 themeGrid.style.gridTemplateAreas = template.join(' ');
-
-                // 给每个 cell 设置对应的 grid-area
                 themeCells.forEach(cell => {
                     const cellMode = cell.dataset.mode;
                     cell.style.gridArea = areaMap[cellMode] || cellMode;
-
-                    // 更新 aria-label 提示
                     if (cellMode === mode) {
                         cell.setAttribute('title', `${getModeLabel(cellMode)} · 当前最大区域`);
                         cell.setAttribute('aria-label', `当前主题：${getModeLabel(cellMode)}（最大色块）`);
@@ -1530,8 +1544,6 @@
                         cell.setAttribute('aria-label', `切换至${getModeLabel(cellMode)}`);
                     }
                 });
-
-                // 更新 theme-grid 的 title
                 themeGrid.setAttribute('title', `蒙德里安主题矩阵 · 当前：${getModeLabel(mode)}`);
             }
 
@@ -1545,23 +1557,18 @@
                 return labels[mode] || mode;
             }
 
-            // 点击切换
             themeCells.forEach(cell => {
                 cell.addEventListener('click', () => {
                     const mode = cell.dataset.mode;
                     const current = localStorage.getItem('theme') || 'light';
-                    if (mode !== current) {
-                        setTheme(mode);
-                    }
+                    if (mode !== current) setTheme(mode);
                 });
             });
 
-            // 初始化
             const savedTheme = localStorage.getItem('theme') || 'light';
             document.body.classList.add(savedTheme + '-mode');
             updateThemeGridLayout(savedTheme);
 
-            // ─── 钢琴条与音频 ───
             const pianoBar = document.getElementById('pianoBar');
             const pianoKeys = pianoBar.querySelectorAll('.piano-key');
             const notes = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88];
@@ -1600,7 +1607,6 @@
                 key.addEventListener('click', (e) => {
                     playTone(notes[idx]);
                     createRipple(e.clientX, e.clientY);
-
                     if (idx === 3) {
                         faClicks++;
                         clearTimeout(faTimer);
@@ -1618,7 +1624,6 @@
                 });
             });
 
-            // ─── 网络状态 ───
             const netStatusEl = document.getElementById('netStatus'),
                 netMsgEl = document.getElementById('netMsg');
             let netHideTimer;
@@ -1639,7 +1644,6 @@
                 if (autohide > 0) netHideTimer = setTimeout(() => netStatusEl.classList.remove('show'), autohide);
             }
 
-            // ─── 配置 ───
             const CONFIG = { OWNER: 'moohydra', REPO: 'moohydra.github.io', POSTS_PATH: 'posts' };
             const API_PROXIES = [
                 'https://api.github.com',
@@ -1816,14 +1820,16 @@
                 try {
                     const data = await resp.json();
                     if (!Array.isArray(data)) return [];
-                    return data.filter(item => item.type === 'file' && /\.(md|pdf|xlsx|xls)$/i.test(item.name)).map(
+                    return data.filter(item => item.type === 'file' && /\.(md|pdf|xlsx|xls|mp3|wav|ogg|flac|mp4|webm|mov)$/i.test(item.name)).map(
                         item => {
                             const name = item.name.toLowerCase();
                             let fileType = 'md';
                             if (name.endsWith('.pdf')) fileType = 'pdf';
                             else if (name.endsWith('.xlsx') || name.endsWith('.xls')) fileType = 'excel';
+                            else if (/\.(mp3|wav|ogg|flac)$/i.test(name)) fileType = 'audio';
+                            else if (/\.(mp4|webm|mov)$/i.test(name)) fileType = 'video';
                             return {
-                                title: item.name.replace(/\.(md|pdf|xlsx|xls)$/i, ''),
+                                title: item.name.replace(/\.(md|pdf|xlsx|xls|mp3|wav|ogg|flac|mp4|webm|mov)$/i, ''),
                                 category,
                                 download_url: item.download_url || '#',
                                 html_url: item.html_url || '#',
@@ -1887,9 +1893,14 @@
                         const idx = filteredArticles.indexOf(art);
                         const dateStr = art.created ? formatDateTime(art.created) : '';
                         let badge = '';
-                        if (art.fileType === 'pdf') { badge =
-                            '<span class="file-badge pdf-badge">PDF</span>'; } else if (art.fileType ===
-                            'excel') { badge = '<span class="file-badge excel-badge">XLSX</span>'; }
+                        if (art.fileType === 'pdf') badge =
+                            '<span class="file-badge pdf-badge">PDF</span>';
+                        else if (art.fileType === 'excel') badge =
+                            '<span class="file-badge excel-badge">XLSX</span>';
+                        else if (art.fileType === 'audio') badge =
+                            '<span class="file-badge audio-badge">AUDIO</span>';
+                        else if (art.fileType === 'video') badge =
+                            '<span class="file-badge video-badge">VIDEO</span>';
                         html +=
                             `<div class="article-item" data-idx="${idx}"><span>${art.title}${badge}</span>${dateStr ? `<span class="article-date">${dateStr}</span>` : ''}</div>`;
                     });
@@ -2034,6 +2045,35 @@
                         const wb = XLSX.read(arrayBuf, { type: 'array' });
                         renderExcel(wb, title);
                     } catch { showMockExcel(title); }
+                } else if (fileType === 'audio' || fileType === 'video') {
+                    articleContentDiv.innerHTML =
+                        '<div style="text-align:center;padding:80px 24px;font-family:var(--font-serif);font-size:24px;color:var(--ink-secondary);">准备播放…</div>';
+                    const result = await raceRawProxies(downloadUrl);
+                    if (!result) {
+                        articleContentDiv.innerHTML =
+                            `<div class="net-error-block"><div class="err-title">媒体加载失败</div><button class="err-retry" onclick="loadAndShowArticle('${downloadUrl}','${title}','${fileType}','${htmlUrl}')">重试</button></div>`;
+                        return;
+                    }
+                    const mediaUrl = result.url;
+                    const container = document.createElement('div');
+                    container.className = 'media-player-container';
+                    if (fileType === 'audio') {
+                        container.innerHTML = `
+                            <div class="media-player-label">音频播放</div>
+                            <audio controls autoplay>
+                                <source src="${mediaUrl}" type="audio/mpeg">
+                                您的浏览器不支持音频播放。
+                            </audio>`;
+                    } else {
+                        container.innerHTML = `
+                            <div class="media-player-label">视频播放</div>
+                            <video controls autoplay playsinline style="max-width:100%;">
+                                <source src="${mediaUrl}" type="video/mp4">
+                                您的浏览器不支持视频播放。
+                            </video>`;
+                    }
+                    articleContentDiv.innerHTML = '';
+                    articleContentDiv.appendChild(container);
                 }
             }
 
@@ -2097,7 +2137,7 @@
                     const btn = document.createElement('div');
                     btn.className = 'cat-card';
                     btn.innerHTML =
-                    `<div class="cat-label">0${i + 1}</div><div class="cat-title">${cat}</div>`;
+                        `<div class="cat-label">0${i + 1}</div><div class="cat-title">${cat}</div>`;
                     btn.addEventListener('click', async () => {
                         if (allArticles.length === 0) {
                             articlesListDiv.innerHTML =
@@ -2163,7 +2203,6 @@
             });
             listSearchInput.addEventListener('keypress', e => { if (e.key === 'Enter') listSearchBtn.click(); });
 
-            // ─── Toast ───
             const toastEl = document.getElementById('toast');
 
             function showToast(msg) {
@@ -2172,7 +2211,6 @@
                 setTimeout(() => toastEl.classList.remove('show'), 2500);
             }
 
-            // ─── 吃豆人 ───
             const pacmanView = document.getElementById('pacmanView'),
                 closePacman = document.getElementById('closePacman');
             closePacman.addEventListener('click', () => { pacmanView.classList.remove('visible');
