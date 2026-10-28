@@ -1,0 +1,9 @@
+# 本地截图 / 调试产物
+.openchamber/
+*.bak
+.index.legacy.bak
+
+# 系统垃圾
+.DS_Store
+Thumbs.db
+desktop.ini
